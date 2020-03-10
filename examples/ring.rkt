@@ -94,6 +94,4 @@
               (and (= (length (model-xs s*)) (ring-size r*))
                    (equal? got expected)))))
 
-  (check-property
-   (make-config #:tests 1000)
-   ring-state))
+  (check-property ring-state))
