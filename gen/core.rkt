@@ -17,7 +17,8 @@
  gen:const
  gen:map
  gen:and-then
- gen:filter)
+ gen:filter
+ gen:no-shrink)
 
 (struct exn:fail:gen exn:fail ())
 (struct exn:fail:gen:exhausted exn:fail:gen ())
@@ -77,6 +78,11 @@
 
          [else
           (search (add1 attempts) (add1 size))])))))
+
+(define (gen:no-shrink g)
+  (gen
+   (lambda (rng size)
+     (stream (stream-first (g rng size))))))
 
 (module+ private
   (provide gen))

@@ -25,7 +25,8 @@
     (gen:symbol gen:char-letter))
 
   (define gen:op
-    (gen:let ([keys (gen:resize 10 (gen:non-empty (gen:list gen:key)))]
+    (gen:let ([keys (gen:no-shrink
+                     (gen:resize 10 (gen:non-empty (gen:list gen:key))))]
               [actions (gen:list
                         (gen:amb
                          (gen:tuple (gen:const 'set) (gen:one-of keys) gen:natural)
