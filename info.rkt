@@ -5,6 +5,7 @@
 (define deps '("base"
                "rackunit-lib"))
 (define build-deps '("racket-doc"
+                     "rackunit-doc"
                      "rackunit-lib"
                      "scribble-lib"))
 (define scribblings '(("rackcheck.scrbl")))

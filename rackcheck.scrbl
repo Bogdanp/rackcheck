@@ -4,11 +4,12 @@
           (for-label racket/base
                      racket/contract
                      racket/stream
-                     rackcheck))
+                     rackcheck
+                     rackunit))
 
 @(begin
   (define ev (make-base-eval))
-  (ev '(require rackcheck racket/list racket/stream))
+  (ev '(require rackcheck racket/list racket/stream rackunit))
   (ev '(random-seed 1337))
   (define-syntax-rule (ex body ...)
     (examples
@@ -382,11 +383,10 @@ Don't use them to produce values for your tests.
   @ex[
     (check-property
      (property ([xs (gen:list gen:natural)])
-       (equal? (reverse (reverse xs)) xs)))
+       (check-equal? (reverse (reverse xs)) xs)))
   ]
 
   @ex[
-     (require rackunit)
      (check-property
       (property ([xs (gen:list gen:natural)])
         (check-equal? (reverse xs) xs)))
