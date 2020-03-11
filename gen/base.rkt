@@ -16,7 +16,6 @@
  gen:integer-in
  gen:real
  gen:one-of
- gen:choice
  gen:boolean
  gen:char
  gen:char-in
@@ -31,9 +30,6 @@
  gen:hash
  gen:hasheq
  gen:hasheqv
- gen:sized
- gen:resize
- gen:scale
  gen:frequency)
 
 (define (halves n)
@@ -116,11 +112,6 @@
             (stream)
             (stream* (random-ref xs rng) (loop (cdr xs)))))))))
 
-(define (gen:choice . gs)
-  (gen
-   (lambda (rng size)
-     ((random-ref gs rng) rng size))))
-
 (define gen:boolean
   (gen:one-of '(#t #f)))
 
@@ -158,7 +149,8 @@
 (define gen:char-digit
   (gen:char-in 48 57))
 
-(define (gen:tuple . gs)
+(define/contract (gen:tuple . gs)
+  (-> gen? gen? ... gen?)
   (gen
    (lambda (rng size)
      (define seqs
@@ -238,14 +230,15 @@
               list->vector))))
 
 (define gen:bytes
-  (gen:map
-   (gen:list (gen:integer-in 0 255))
-   list->bytes))
+  (make-keyword-procedure
+   (lambda (kws kw-args [g (gen:integer-in 0 255)] . args)
+     (gen:map (keyword-apply gen:list kws kw-args g args)
+              list->bytes))))
 
 (define gen:string
   (make-keyword-procedure
-   (lambda (kws kw-args . args)
-     (gen:map (keyword-apply gen:list kws kw-args args)
+   (lambda (kws kw-args [g gen:char] . args)
+     (gen:map (keyword-apply gen:list kws kw-args g args)
               list->string))))
 
 (define gen:symbol
@@ -290,21 +283,6 @@
 (define-gen:hash gen:hash make-immutable-hash)
 (define-gen:hash gen:hasheq make-immutable-hasheq)
 (define-gen:hash gen:hasheqv make-immutable-hasheqv)
-
-(define (gen:sized f)
-  (gen
-   (lambda (rng size)
-     ((f size) rng size))))
-
-(define (gen:resize g size)
-  (gen
-   (lambda (rng _size)
-     (g rng size))))
-
-(define (gen:scale g f)
-  (gen:sized
-   (lambda (size)
-     (gen:resize g (f size)))))
 
 (define/contract (gen:frequency freqs)
   (-> (non-empty-listof (cons/c exact-positive-integer? gen?)) gen?)

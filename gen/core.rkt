@@ -1,6 +1,7 @@
 #lang racket/base
 
 (require racket/contract
+         racket/random
          racket/stream
          "../private/stream.rkt")
 
@@ -18,6 +19,10 @@
  gen:map
  gen:and-then
  gen:filter
+ gen:choice
+ gen:sized
+ gen:resize
+ gen:scale
  gen:no-shrink)
 
 (struct exn:fail:gen exn:fail ())
@@ -63,7 +68,10 @@
        (for/stream ([v (in-stream (g rng size))])
          ((h v) rng size)))))))
 
-(define (gen:filter g p [max-attempts 1000])
+(define/contract (gen:filter g p [max-attempts 1000])
+  (->* (gen? (-> any/c boolean?))
+       ((or/c exact-positive-integer? +inf.0))
+       gen?)
   (gen
    (lambda (rng size)
      (let search ([attempts 0]
@@ -78,6 +86,26 @@
 
          [else
           (search (add1 attempts) (add1 size))])))))
+
+(define (gen:choice . gs)
+  (gen
+   (lambda (rng size)
+     ((random-ref gs rng) rng size))))
+
+(define (gen:sized f)
+  (gen
+   (lambda (rng size)
+     ((f size) rng size))))
+
+(define (gen:resize g size)
+  (gen
+   (lambda (rng _size)
+     (g rng size))))
+
+(define (gen:scale g f)
+  (gen:sized
+   (lambda (size)
+     (gen:resize g (f size)))))
 
 (define (gen:no-shrink g)
   (gen
