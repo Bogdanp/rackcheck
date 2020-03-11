@@ -14,6 +14,7 @@
 
  gen:natural
  gen:integer-in
+ gen:real
  gen:one-of
  gen:amb
  gen:boolean
@@ -101,6 +102,11 @@
     (check-values (-161 '(-80 -40 -20 -10 -5 -2 -1 0))
       (shrink (gen:integer-in -200 20)))))
 
+(define gen:real
+  (gen
+   (lambda (rng _size)
+     (stream (random rng)))))
+
 (define (gen:one-of xs)
   (gen
    (lambda (rng _size)
@@ -161,8 +167,7 @@
 
      ;; TODO: shrink via product.
      (for/stream ([t (sequence-map
-                      (lambda vals
-                        vals)
+                      (lambda vals vals)
                       (apply in-parallel seqs))])
        t))))
 
