@@ -117,9 +117,14 @@
     (match-define (config seed tests size deadline) c)
     (match-define (prop name arg-ids g f) p)
 
+    (define e #f)
     (define (pass? args)
-      (parameterize ([current-pseudo-random-generator caller-rng])
-        (apply f args)))
+      (with-handlers ([(lambda _ #t)
+                       (lambda (the-exn)
+                         (begin0 #f
+                           (set! e the-exn)))])
+        (parameterize ([current-pseudo-random-generator caller-rng])
+          (apply f args))))
 
     (random-seed seed)
     (let loop ([test 1])
@@ -133,22 +138,19 @@
         [else
          (define s (g rng (size test)))
          (define v (stream-first s))
-         (with-handlers ([(lambda _ #t)
-                          (lambda (e)
-                            (make-result c p test 'falsified v #f e))])
-           (cond
-             [(pass? v)
-              (loop (add1 test))]
+         (cond
+           [(pass? v)
+            (loop (add1 test))]
 
-             [else
-              (define smallest
-                (for/fold ([smallest #f])
-                          ([v (in-stream (stream-rest s))])
-                  (cond
-                    [(pass? v) smallest]
-                    [else v])))
+           [else
+            (define smallest
+              (for/fold ([smallest #f])
+                        ([v (in-stream (stream-rest s))])
+                (cond
+                  [(pass? v) smallest]
+                  [else v])))
 
-              (make-result c p test 'falsified v smallest)]))]))))
+            (make-result c p test 'falsified v smallest e)])]))))
 
 (module+ private
   (provide check))

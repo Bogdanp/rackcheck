@@ -2,14 +2,9 @@
 
 (require (for-syntax racket/base
                      syntax/parse)
-         racket/string
-         (only-in rackunit
-                  current-check-handler
-                  define-check
-                  fail-check
-                  make-check-info
-                  make-check-location
-                  with-check-info*)
+         racket/port
+         (except-in rackunit check)
+         (only-in rackunit/private/check-info current-check-info)
          "prop.rkt"
          (submod "prop.rkt" private))
 
@@ -20,24 +15,44 @@
   (define res (check c p))
   (case (result-status res)
     [(falsified)
-     (define (format-args args)
-       (string-join
-        (for/list ([arg-id (in-list (prop-arg-ids (result-prop res)))]
-                   [arg (in-list args)])
-          (format "  ~a = ~s" arg-id arg))
-        "\n"))
+     (define e (result-e res))
+
+     (define (display-args args)
+       (for ([arg-id (in-list (prop-arg-ids (result-prop res)))]
+             [arg (in-list args)])
+         (displayln (format "  ~a = ~a" arg-id arg))))
 
      (define message
-       (if (result-args/smallest res)
-           (format "Failed after ~a tests:\n\n~a\n\nShrunk:\n\n~a"
-                   (result-tests-run res)
-                   (format-args (result-args res))
-                   (format-args (result-args/smallest res)))
-           (format "Failed after ~a tests:\n\n~a\n\nCould not shrink."
-                   (result-tests-run res)
-                   (format-args (result-args res)))))
+       (with-output-to-string
+         (lambda ()
+           (displayln (format "Failed after ~a tests:" (result-tests-run res)))
 
-     (fail-check message)]
+           (newline)
+           (display-args (result-args res))
+
+           (newline)
+           (cond
+             [(result-args/smallest res)
+              => (lambda (args)
+                   (displayln "Shrunk:")
+                   (newline)
+                   (display-args args))]
+
+             [else
+              (displayln "Could not shrink.")])
+
+           (when (and (result-e res) (not (exn:test:check? (result-e res))))
+             (parameterize ([current-error-port (current-output-port)])
+               (newline)
+               (displayln "Exception:")
+               ((error-display-handler)
+                (exn-message (result-e res))
+                (result-e res)))))))
+
+     (parameterize ([current-check-info (if (exn:test:check? e)
+                                            (exn:test:check-stack e)
+                                            (current-check-info))])
+       (fail-check message))]
 
     [(timed-out)
      (fail-check (format "Timed out."))]))

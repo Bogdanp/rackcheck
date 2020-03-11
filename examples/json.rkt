@@ -3,7 +3,8 @@
 (module+ test
   (require json
            rackcheck
-           rackcheck/gen/unicode)
+           rackcheck/gen/unicode
+           rackunit)
 
   (define gen:jsexpr
     (gen:frequency
@@ -16,4 +17,4 @@
 
   (check-property
    (property ([v gen:jsexpr])
-     (equal? ((compose1 string->jsexpr jsexpr->string) v) v))))
+     (check-equal? ((compose1 string->jsexpr jsexpr->string) v) v))))

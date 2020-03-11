@@ -39,7 +39,8 @@
 (module+ test
   (require rackcheck
            racket/list
-           racket/match)
+           racket/match
+           rackunit)
 
   (define gen:actions
     (gen:list
@@ -91,7 +92,8 @@
         (interpret-ring r a))
       (values s*
               r*
-              (and (= (length (model-xs s*)) (ring-size r*))
-                   (equal? got expected)))))
+              (and
+               (check-equal? (length (model-xs s*)) (ring-size r*))
+               (check-equal? got expected)))))
 
   (check-property ring-state))

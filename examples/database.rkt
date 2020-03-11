@@ -51,11 +51,14 @@
               ([op (in-list ops)])
       (how res op)))
 
+  (require rackunit)
+
   (define-property prop-like-a-hash
     ([ops gen:op])
     (define db (interpret step-db   ops))
     (define h  (interpret step-hash ops))
-    (equal? (sort (db-entries db) symbol<? #:key car)
-            (sort (hash->list h)  symbol<? #:key car)))
+    (check-equal?
+     (sort (db-entries db) symbol<? #:key car)
+     (sort (hash->list h)  symbol<? #:key car)))
 
   (check-property prop-like-a-hash))

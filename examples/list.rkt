@@ -1,10 +1,11 @@
 #lang racket/base
 
 (module+ test
-  (require rackcheck)
+  (require rackcheck
+           rackunit)
 
   (define-property prop-list-reverse
     ([xs (gen:list gen:natural)])
-    (equal? (reverse (reverse xs)) xs))
+    (check-equal? (reverse (reverse xs)) xs))
 
   (check-property prop-list-reverse))
