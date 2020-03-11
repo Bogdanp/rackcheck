@@ -10,12 +10,13 @@
 @(begin
   (define ev (make-base-eval))
   (ev '(require rackcheck racket/list racket/stream rackunit))
-  (ev '(random-seed 1337))
   (define-syntax-rule (ex body ...)
-    (examples
-     #:eval ev
-     #:label #f
-     body ...)))
+    (begin
+     (random-seed 1337)
+     (examples
+      #:eval ev
+      #:label #f
+      body ...))))
 
 @title{@tt{rackcheck}: property testing}
 @author[(author+email "Bogdan Popa" "bogdan@defn.io")]
@@ -350,31 +351,29 @@ Don't use them to produce values for your tests.
 
 @subsection{Properties}
 
-@deftogether[(
-  @defproc[(property? [v any/c]) boolean?]
-  @defform[(property ([id g] ...+) body ...+)
-           #:contracts ([g gen?])]
-  @defform[(define-property name
-            ([id g] ...+)
-            body ...+)
-           #:contracts ([g gen?])]
-)]{
+@defproc[(property? [v any/c]) boolean?]{
+  Returns @racket[#t] when @racket[v] is a property.
+}
 
-  Decalres a property where the inputs are one or more generators.
+@defform[(property ([id gen-expr] ...) body ...+)]{
+  Declares a property where the inputs are one or more generators.
 
   @ex[
     (property ([xs (gen:list gen:natural)])
-      (equal? (reverse (reverse xs)) xs))
+      (check-equal? (reverse (reverse xs)) xs))
   ]
-
-  The @racket[define-property] form is a shorthand for @racket[(define name (property ...))].
 }
 
-@defform[(check-property maybe-config p)
-         #:grammar ([maybe-config (code:line c)
-                                  (code:line)])
-         #:contracts ([p property?]
-                      [c config?])]{
+@defform[(define-property name
+          ([id gen-expr] ...)
+          body ...+)]{
+
+  A shorthand for @racket[(define name (property ...))].
+}
+
+@defform[(check-property maybe-config prop-expr)
+         #:grammar ([maybe-config (code:line)
+                                  (code:line config-expr)])]{
 
   Tries to falsify the property @racket[p] according to the config.
   If not provided, then a default configuration with a random seed
@@ -393,14 +392,14 @@ Don't use them to produce values for your tests.
   ]
 }
 
-@deftogether[(
-  @defproc[(config? [v any/c]) boolean?]
-  @defproc[(make-config [#:seed seed (integer-in 0 (sub1 (expt 2 31))) ...]
-                        [#:tests tests exact-positive-integer? 100]
-                        [#:size size (-> exact-positive-integer? exact-nonnegative-integer?) (lambda (n) (expt (sub1 n) 2))]
-                        [#:deadline deadline positive-integer? (+ (current-inexact-milliseconds) (* 60 1000))]) config?]
+@defproc[(config? [v any/c]) boolean?]{
+  Returns @racket[#t] when @racket[v] is a config value.
+}
 
-)]{
+@defproc[(make-config [#:seed seed (integer-in 0 (sub1 (expt 2 31))) ...]
+                      [#:tests tests exact-positive-integer? 100]
+                      [#:size size (-> exact-positive-integer? exact-nonnegative-integer?) (lambda (n) (expt (sub1 n) 2))]
+                      [#:deadline deadline positive-integer? (+ (current-inexact-milliseconds) (* 60 1000))]) config?]{
 
   Creates values that control the behavior of @racket[check-property].
 }
