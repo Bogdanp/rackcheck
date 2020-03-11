@@ -398,7 +398,7 @@ Don't use them to produce values for your tests.
   @defproc[(make-config [#:seed seed (integer-in 0 (sub1 (expt 2 31))) ...]
                         [#:tests tests exact-positive-integer? 100]
                         [#:size size (-> exact-positive-integer? exact-nonnegative-integer?) (lambda (n) (expt (sub1 n) 2))]
-                        [#:deadline deadline (+ (current-inexact-milliseconds) (* 60 1000))]) config?]
+                        [#:deadline deadline positive-integer? (+ (current-inexact-milliseconds) (* 60 1000))]) config?]
 
 )]{
 
