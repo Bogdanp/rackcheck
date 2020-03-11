@@ -316,7 +316,7 @@
                 [freqs freqs])
        (define pair (car freqs))
        (define sum* (+ (car pair) sum))
-       (if (>= sum* x)
+       (if (> sum* x)
            (cdr pair)
            (loop sum* (cdr freqs)))))))
 
@@ -327,7 +327,7 @@
                               (5  . ,gen:char-letter)
                               (2  . ,(gen:string gen:char-letter))))
              10)
-     '(0 "u" #\R #\G #\d 14 #\H 11 #\e 2))))
+     '(0 "u" #\R #\G "uo" 0 8 #\e 2 14))))
 
 ;; Local Variables:
 ;; eval: (put 'check-values 'racket-indent-function #'defun)
