@@ -5,7 +5,8 @@
          "core.rkt")
 
 (provide
- gen:let)
+ gen:let
+ gen:delay)
 
 (define (gen:let-helper r)
   (cond
@@ -20,6 +21,11 @@
     [(_ ([id:id g:expr] . r) body ...+)
      #'(gen:and-then g (lambda (id)
                          (gen:let r body ...)))]))
+
+(define-syntax-rule (gen:delay g)
+  (make-gen
+   (lambda (rng size)
+     (g rng size))))
 
 (module+ test
   (require rackunit
