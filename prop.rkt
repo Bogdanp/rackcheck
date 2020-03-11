@@ -57,18 +57,10 @@
 ;; config ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (provide
- make-config
- (contract-out
-  (struct config ([seed seed/c]
-                  [tests exact-positive-integer?]
-                  [size (-> exact-positive-integer? exact-nonnegative-integer?)]
-                  [deadline exact-nonnegative-integer?]))))
+ config?
+ make-config)
 
-(define seed/c
-  (integer-in 0 (sub1 (expt 2 31))))
-
-(struct config (seed tests size deadline)
-  #:transparent)
+(struct config (seed tests size deadline))
 
 (define/contract (make-config #:seed [seed (make-random-seed)]
                               #:tests [tests 100]
@@ -83,28 +75,20 @@
        config?)
   (config seed tests size deadline))
 
+(module+ private
+  (provide (struct-out config)))
+
 
 ;; result ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(provide
- status/c
- (contract-out
-  (struct result ([config config?]
-                  [prop prop?]
-                  [tests-run exact-positive-integer?]
-                  [status status/c]
-                  [args (or/c false/c (listof any/c))]
-                  [args/smallest (or/c false/c (listof any/c))]
-                  [e (or/c false/c exn?)]))))
-
-(define status/c
-  (or/c 'passed 'falsified 'timed-out))
 
 (struct result (config prop tests-run status args args/smallest e)
   #:transparent)
 
 (define (make-result config prop tests-run [status 'passed] [args #f] [args/smallest #f] [exception #f])
   (result config prop tests-run status args args/smallest exception))
+
+(module+ private
+  (provide (struct-out result)))
 
 
 ;; check ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
