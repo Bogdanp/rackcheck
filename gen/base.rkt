@@ -16,7 +16,7 @@
  gen:integer-in
  gen:real
  gen:one-of
- gen:amb
+ gen:choice
  gen:boolean
  gen:char
  gen:char-in
@@ -116,7 +116,7 @@
             (stream)
             (stream* (random-ref xs rng) (loop (cdr xs)))))))))
 
-(define (gen:amb . gs)
+(define (gen:choice . gs)
   (gen
    (lambda (rng size)
      ((random-ref gs rng) rng size))))
@@ -151,7 +151,7 @@
   (gen:char-in 0 255))
 
 (define gen:char-letter
-  (gen:amb
+  (gen:choice
    (gen:char-in 65 90)
    (gen:char-in 97 122)))
 

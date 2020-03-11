@@ -46,7 +46,7 @@
 
   (define gen:variable
     (gen:let ([h gen:char-letter]
-              [t (gen:string (gen:amb gen:char-letter gen:char-digit))])
+              [t (gen:string (gen:choice gen:char-letter gen:char-digit))])
       (string->symbol
        (apply string h (string->list t)))))
 

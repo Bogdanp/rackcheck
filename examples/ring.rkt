@@ -43,7 +43,7 @@
 
   (define gen:actions
     (gen:list
-     (gen:amb
+     (gen:choice
       (gen:tuple (gen:const 'push) gen:natural)
       (gen:tuple (gen:const 'pop))
       (gen:tuple (gen:const 'size)))))

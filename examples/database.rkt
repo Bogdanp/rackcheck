@@ -28,7 +28,7 @@
     (gen:let ([keys (gen:no-shrink
                      (gen:resize (gen:filter (gen:list gen:key) (compose1 not null?)) 10))]
               [actions (gen:list
-                        (gen:amb
+                        (gen:choice
                          (gen:tuple (gen:const 'set) (gen:one-of keys) gen:natural)
                          (gen:tuple (gen:const 'remove) (gen:one-of keys))
                          (gen:tuple (gen:const 'clear))))])
