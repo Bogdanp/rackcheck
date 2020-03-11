@@ -33,7 +33,7 @@
   (-> generator/c gen?)
   (gen f))
 
-(define/contract (sample g [n 30] [rng (current-pseudo-random-generator)])
+(define/contract (sample g [n 10] [rng (current-pseudo-random-generator)])
   (->* (gen?) (exact-positive-integer? pseudo-random-generator?) (listof any/c))
   (for/list ([s (in-range n)])
     (stream-first (g rng (expt s 2)))))

@@ -26,7 +26,7 @@
 
   (define gen:op
     (gen:let ([keys (gen:no-shrink
-                     (gen:resize 10 (gen:non-empty (gen:list gen:key))))]
+                     (gen:resize (gen:filter (gen:list gen:key) (compose1 not null?)) 10))]
               [actions (gen:list
                         (gen:amb
                          (gen:tuple (gen:const 'set) (gen:one-of keys) gen:natural)

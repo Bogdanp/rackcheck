@@ -4,9 +4,7 @@
          racket/list
          racket/random
          racket/sequence
-         racket/set
          racket/stream
-         racket/vector
          "../private/stream.rkt"
          "core.rkt"
          (submod "core.rkt" private))
@@ -32,8 +30,10 @@
  gen:hash
  gen:hasheq
  gen:hasheqv
+ gen:sized
  gen:resize
- gen:non-empty)
+ gen:scale
+ gen:frequency)
 
 (define (halves n)
   (let loop ([n (quotient n 2)])
@@ -286,23 +286,43 @@
 (define-gen:hash gen:hasheq make-immutable-hasheq)
 (define-gen:hash gen:hasheqv make-immutable-hasheqv)
 
-(define (gen:resize size g)
+(define (gen:sized f)
+  (gen
+   (lambda (rng size)
+     ((f size) rng size))))
+
+(define (gen:resize g size)
   (gen
    (lambda (rng _size)
      (g rng size))))
 
-(define (gen:non-empty g)
-  (gen:filter g (lambda (v)
-                  (not
-                   (cond
-                     [(list? v)   (null? v)]
-                     [(hash? v)   (hash-empty? v)]
-                     [(vector? v) (vector-empty? v)]
-                     [(string? v) (string=? v #"")]
-                     [(bytes? v)  (bytes=? v #"")]
-                     [(symbol? v) (eq? v '||)]
-                     [(set? v)    (set-empty? v)]
-                     [else (raise-argument-error 'v "a basic container data type (like a list)" v)])))))
+(define (gen:scale g f)
+  (gen:sized
+   (lambda (size)
+     (gen:resize g (f size)))))
+
+(define/contract (gen:frequency freqs)
+  (-> (non-empty-listof (cons/c exact-positive-integer? gen?)) gen?)
+  (define total (apply + (map car freqs)))
+  (gen:and-then
+   (gen:integer-in 0 (sub1 total))
+   (lambda (x)
+     (let loop ([sum 0]
+                [freqs freqs])
+       (define pair (car freqs))
+       (define sum* (+ (car pair) sum))
+       (if (>= sum* x)
+           (cdr pair)
+           (loop sum* (cdr freqs)))))))
+
+(module+ test
+  (tc "frequency"
+    (check-equal?
+     (sample (gen:frequency `((7 . ,gen:natural)
+                              (5  . ,gen:char-letter)
+                              (2  . ,(gen:string gen:char-letter))))
+             10)
+     '(0 "u" #\R #\G #\d 14 #\H 11 #\e 2))))
 
 ;; Local Variables:
 ;; eval: (put 'check-values 'racket-indent-function #'defun)
