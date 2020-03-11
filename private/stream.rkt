@@ -44,16 +44,12 @@
 (module+ test
   (require rackunit)
 
-  (define (v n)
-    (begin0 n
-      (printf "~a\n" n)))
-
   (define s
     (for/stream ([n (in-range 5)])
       (stream
-       (v n)
-       (v (* n 2))
-       (v (expt 2 n)))))
+       n
+       (* n 2)
+       (expt 2 n))))
 
   (check-equal?
    (stream->list (make-unroll s))
