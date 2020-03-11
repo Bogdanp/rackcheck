@@ -10,7 +10,8 @@
            (* dy dy))))
 
 (module+ test
-  (require rackcheck)
+  (require rackcheck
+           rackunit)
 
   (define gen:point
     (gen:let ([x (gen:integer-in -9999 9999)]
@@ -20,5 +21,5 @@
   (check-property
    (property ([p1 gen:point]
               [p2 gen:point])
-     (= (distance p1 p2)
-        (distance p2 p1)))))
+     (check-equal? (distance p1 p2)
+                   (distance p2 p1)))))
