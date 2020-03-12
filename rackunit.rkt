@@ -1,6 +1,7 @@
 #lang racket/base
 
 (require (for-syntax racket/base
+                     racket/format
                      syntax/parse)
          racket/port
          (except-in rackunit check)
@@ -61,7 +62,10 @@
   (syntax-parse stx
     [(_ (~optional c:expr) p:expr)
      #:with location (datum->syntax stx (list 'list
-                                              (syntax-source stx)
+                                              (let ([source (syntax-source stx)])
+                                                (cond
+                                                  [(path? source) source]
+                                                  [else (~a source)]))
                                               (syntax-line stx)
                                               (syntax-column stx)
                                               (syntax-position stx)
