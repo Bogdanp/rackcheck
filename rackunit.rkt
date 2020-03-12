@@ -20,7 +20,7 @@
      (define (display-args args)
        (for ([arg-id (in-list (prop-arg-ids (result-prop res)))]
              [arg (in-list args)])
-         (displayln (format "  ~a = ~a" arg-id arg))))
+         (displayln (format "  ~a = ~s" arg-id arg))))
 
      (define message
        (with-output-to-string
