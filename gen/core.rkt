@@ -55,12 +55,14 @@
    (lambda (_rng _size)
      (stream v))))
 
-(define (gen:map g f)
+(define/contract (gen:map g f)
+  (-> gen? (-> any/c any/c) gen?)
   (gen
    (lambda (rng size)
      (stream-map f (g rng size)))))
 
-(define (gen:and-then g h)
+(define/contract (gen:and-then g h)
+  (-> gen? (-> any/c gen?) gen?)
   (gen
    (lambda (rng size)
      (stream-dedupe
@@ -87,27 +89,32 @@
          [else
           (search (add1 attempts) (add1 size))])))))
 
-(define (gen:choice . gs)
+(define/contract (gen:choice . gs)
+  (-> gen? gen? ... gen?)
   (gen
    (lambda (rng size)
      ((random-ref gs rng) rng size))))
 
-(define (gen:sized f)
+(define/contract (gen:sized f)
+  (-> (-> exact-nonnegative-integer? gen?) gen?)
   (gen
    (lambda (rng size)
      ((f size) rng size))))
 
-(define (gen:resize g size)
+(define/contract (gen:resize g size)
+  (-> gen? exact-nonnegative-integer? gen?)
   (gen
    (lambda (rng _size)
      (g rng size))))
 
-(define (gen:scale g f)
+(define/contract (gen:scale g f)
+  (-> gen? (-> exact-nonnegative-integer? exact-positive-integer?) gen?)
   (gen:sized
    (lambda (size)
      (gen:resize g (f size)))))
 
-(define (gen:no-shrink g)
+(define/contract (gen:no-shrink g)
+  (-> gen? gen?)
   (gen
    (lambda (rng size)
      (stream (stream-first (g rng size))))))

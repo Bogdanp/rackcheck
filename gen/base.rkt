@@ -103,7 +103,8 @@
    (lambda (rng _size)
      (stream (random rng)))))
 
-(define (gen:one-of xs)
+(define/contract (gen:one-of xs)
+  (-> (non-empty-listof any/c) gen?)
   (gen
    (lambda (rng _size)
      (stream-dedupe
@@ -129,7 +130,10 @@
     (check-values (#t '(#f))
       (shrink gen:boolean))))
 
-(define (gen:char-in lo hi)
+(define/contract (gen:char-in lo hi)
+  (-> (integer-in 0 #x10FFFF)
+      (integer-in 0 #x10FFFF)
+      gen?)
   (gen:map
    (gen:filter (gen:integer-in lo hi)
                (lambda (n)
@@ -179,7 +183,8 @@
                      (0 |9|)))
       (shrink (gen:tuple gen:natural (gen:symbol gen:char-digit))))))
 
-(define (gen:list g #:max-length [max-len 128])
+(define/contract (gen:list g #:max-length [max-len 128])
+  (->* (gen?) (#:max-length exact-nonnegative-integer?) gen?)
   (gen:and-then
    gen:natural
    (lambda (len)
