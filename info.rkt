@@ -9,4 +9,5 @@
                      "rackunit-lib"
                      "scribble-lib"))
 (define scribblings '(("rackcheck.scrbl")))
+(define compile-omit-paths '("examples"))
 (define test-omit-paths '("examples"))

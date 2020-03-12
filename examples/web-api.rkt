@@ -41,7 +41,7 @@ SQL
 
 (define (players req)
   (response/json
-    (for/list ([(id name score) (in-query (current-conn) "SELECT * FROM players ORDER BY id")])
+    (for/list ([(id name score) (in-query (current-conn) "SELECT * FROM players ORDER BY score DESC, name ASC")])
       (hasheq 'id id
               'name name
               'score score))))
@@ -66,10 +66,15 @@ SQL
 
   (response/json (hasheq)))
 
+(define (increase-score req name)
+  (query-exec (current-conn) "UPDATE players SET score = score + 1 WHERE name = ?" name)
+  (response/json (hasheq)))
+
 (define-values (app _)
   (dispatch-rules
    [("players") players]
-   [("players") #:method "post" add-player]))
+   [("players") #:method "post" add-player]
+   [("scores" (string-arg)) #:method "post" increase-score]))
 
 (define (start [ch #f])
   (serve
@@ -136,48 +141,69 @@ SQL
     (lambda ()
       (stop))
 
-    (test-case "adding players"
-      (struct model (names)
+    (test-case "leaderboard"
+      (struct model (names scores-by-name)
         #:transparent)
 
       (define gen:ops
         (gen:let ([names (gen:no-shrink
-                          (gen:resize (gen:filter (gen:list gen:player-name) (compose1 not null?)) 5))]
+                          (gen:resize (gen:filter (gen:list gen:player-name)
+                                                  (compose1 not null?))
+                                      10))]
                   [ops (gen:list
                         (gen:choice
                          (gen:tuple (gen:const 'create) (gen:one-of names))
-                         (gen:tuple (gen:const 'count))))])
+                         (gen:tuple (gen:const 'increase) (gen:one-of names))))])
           (cons '(init) ops)))
 
       (define/match (interpret s op)
         [(s (list 'init))
          (reset)
-         (model null)]
+         (model null (hash))]
 
-        [((model names) (list 'create name))
+        [((model names scores) (list 'create name))
          (define (create-player)
            (with-handlers ([exn:fail? void])
              (request "/players" (hasheq 'name name))))
 
+         (define (player-names)
+           (sort (for/list ([player (in-list (request "/players"))])
+                   (hash-ref player 'name))
+                 string<?))
+
          (cond
            [(regexp-match-exact? " *" name)
             (begin0 s
-              (create-player))]
+              (create-player)
+              (check-equal? (player-names) names))]
 
            [(member name names)
             (begin0 s
-              (create-player))]
+              (create-player)
+              (check-equal? (player-names) names))]
 
            [else
-            (begin0 (model (cons name names))
-              (create-player))])]
+            (define names* (sort (cons name names) string<?))
+            (begin0 (model names* (hash-set scores name 0))
+              (create-player)
+              (check-equal? (player-names) names*))])]
 
-        [((model names) (list 'count))
-         (begin0 s
-           (check-equal? (length (request "/players"))
-                         (length names)))])
+        [((model names scores) (list 'increase name))
+         (define scores*
+           (if (hash-has-key? scores name)
+               (hash-update scores name add1)
+               scores))
+
+         (request (format "/scores/~a" name) (hasheq))
+         (check-equal?
+          (for/list ([player (in-list (request "/players"))])
+            (cons (hash-ref player 'name)
+                  (hash-ref player 'score)))
+          (sort (sort (hash->list scores*) string<? #:key car) > #:key cdr))
+         (model names scores*)])
 
       (check-property
+       (make-config #:tests 30)
        (property ([ops gen:ops])
          (for/fold ([s #f])
                    ([op (in-list ops)])
