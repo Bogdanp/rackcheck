@@ -13,3 +13,4 @@ jobs:
           version: 7.6
       - run: raco pkg install --batch --auto --name rackcheck
       - run: raco test .
+      - run: raco test examples/*
