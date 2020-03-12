@@ -14,9 +14,9 @@
 (define (init-db)
   (query-exec (current-conn) #<<SQL
 CREATE TABLE players(
-  id integer primary key autoincrement,
-  name text not null,
-  score integer not null default 0
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  score INTEGER NOT NULL DEFAULT 0
 );
 SQL
               ))
