@@ -55,7 +55,7 @@
        (fail-check message))]
 
     [(timed-out)
-     (fail-check (format "Timed out."))]))
+     (fail-check (format "Timed out after ~a tests." (result-tests-run res)))]))
 
 (define-syntax (check-property* stx)
   (syntax-parse stx
