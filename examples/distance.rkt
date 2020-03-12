@@ -5,7 +5,7 @@
 
 (define (distance p1 p2)
   (define dx (- (point-x p1) (point-x p2)))
-  (define dy (- (point-y p1) (point-x p2)))
+  (define dy (- (point-y p1) (point-y p2)))
   (sqrt (+ (* dx dx)
            (* dy dy))))
 
