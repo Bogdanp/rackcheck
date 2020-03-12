@@ -71,7 +71,7 @@
        (#:seed (integer-in 0 (sub1 (expt 2 31)))
         #:tests exact-positive-integer?
         #:size (-> exact-positive-integer? exact-nonnegative-integer?)
-        #:deadline exact-nonnegative-integer?)
+        #:deadline (>=/c 0))
        config?)
   (config seed tests size deadline))
 
