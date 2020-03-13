@@ -42,58 +42,47 @@
            racket/match
            rackunit)
 
-  (define gen:actions
-    (gen:list
-     (gen:choice
-      (gen:tuple (gen:const 'push) gen:natural)
-      (gen:tuple (gen:const 'pop))
-      (gen:tuple (gen:const 'size)))))
-
-  (define (interpret-ring r a)
-    (match a
-      [(list 'new cap) (values (make-ring cap) (void))]
-      [(list 'push v)  (values r (ring-push! r v))]
-      [(list 'pop)     (values r (ring-pop! r))]
-      [(list 'size)    (values r (ring-size r))]))
-
-  (struct model (cap xs)
+  (struct model (r l)
     #:transparent)
 
-  (define/match (interpret-model s a)
-    [(_ (list 'new cap))
-     (values (model cap null) (void))]
+  (define gen:ops
+    (gen:let ([cap (gen:integer-in 1 100)]
+              [ops (gen:list
+                    (gen:choice
+                     (gen:tuple (gen:const 'push) gen:natural)
+                     (gen:tuple (gen:const 'pop))
+                     (gen:tuple (gen:const 'size))))])
+      (cons `(init ,cap) ops)))
 
-    [((model cap xs) (list 'push v))
-     (values (model cap (take (cons v xs)
-                              (min (add1 (length xs)) cap)))
-             (void))]
+  (define/match (interpret s op)
+    [(_ (list 'init cap))
+     (model (make-ring cap) null)]
 
-    [((model cap (list)) (list 'pop))
-     (values (model cap null) #f)]
+    [((model r l) (list 'push v))
+     (define l* (take (cons v l) (min (add1 (length l))
+                                      (ring-cap r))))
+     (begin0 (model r l*)
+       (ring-push! r v)
+       (check-equal? (ring-size r) (length l*)))]
 
-    [((model cap xs) (list 'pop))
-     (values (model cap (cdr xs)) (car xs))]
+    [((model r (list)) (list 'pop))
+     (begin0 s
+       (check-false (ring-pop! r)))]
 
-    [((model _ xs) (list 'size))
-     (values s (length xs))])
+    [((model r l) (list 'pop))
+     (define v (car l))
+     (define l* (cdr l))
+     (begin0 (model r l*)
+       (check-equal? (ring-pop! r) v))]
+
+    [((model r l) (list 'size))
+     (begin0 s
+       (check-equal? (ring-size r) (length l)))])
 
   (define-property ring-state
-    ([cap (gen:integer-in 1 100)]
-     [actions gen:actions])
-    (for/fold ([s #f]
-               [r #f]
-               [res #t]
-               #:result res)
-              ([a (cons (list 'new cap) actions)]
-               #:when res)
-      (define-values (s* expected)
-        (interpret-model s a))
-      (define-values (r* got)
-        (interpret-ring r a))
-      (values s*
-              r*
-              (and
-               (check-equal? (length (model-xs s*)) (ring-size r*))
-               (check-equal? got expected)))))
+    ([ops gen:ops])
+    (for/fold ([s #f])
+              ([op (in-list ops)])
+      (interpret s op)))
 
   (check-property ring-state))
