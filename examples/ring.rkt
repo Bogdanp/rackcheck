@@ -59,8 +59,10 @@
      (model (make-ring cap) null)]
 
     [((model r l) (list 'push v))
-     (define l* (take (cons v l) (min (add1 (length l))
-                                      (ring-cap r))))
+     (define l*
+       (take (cons v l)
+             (min (add1 (length l))
+                  (ring-cap r))))
      (begin0 (model r l*)
        (ring-push! r v)
        (check-equal? (ring-size r) (length l*)))]
