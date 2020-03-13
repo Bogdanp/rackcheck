@@ -97,9 +97,6 @@ SQL
            rackunit
            rackunit/text-ui)
 
-  (current-conn (sqlite3-connect #:database 'memory))
-  (init-db)
-
   (define stop #f)
 
   (define (reset)
@@ -123,16 +120,14 @@ SQL
       [_
        (error 'server (port->string out))]))
 
-  (define gen:player-name
-    (gen:let ([given (gen:string gen:char-letter)]
-              [family (gen:string gen:char-letter)])
-      (format "~a ~a" given family)))
-
   (run-tests
    (test-suite
     "web-api"
     #:before
     (lambda ()
+      (current-conn (sqlite3-connect #:database 'memory))
+      (init-db)
+
       (define ch (make-async-channel))
       (set! stop (start ch))
       (sync ch))
@@ -144,6 +139,11 @@ SQL
     (test-case "leaderboard"
       (struct model (names scores-by-name)
         #:transparent)
+
+      (define gen:player-name
+        (gen:let ([given (gen:string gen:char-letter)]
+                  [family (gen:string gen:char-letter)])
+          (format "~a ~a" given family)))
 
       (define gen:ops
         (gen:let ([names (gen:no-shrink
