@@ -307,8 +307,8 @@
   (tc "frequency"
     (check-equal?
      (sample (gen:frequency `((7 . ,gen:natural)
-                              (5  . ,gen:char-letter)
-                              (2  . ,(gen:string gen:char-letter))))
+                              (5 . ,gen:char-letter)
+                              (2 . ,(gen:string gen:char-letter))))
              10)
      '(0 "u" #\R #\G "uo" 0 8 #\e 2 14))))
 
