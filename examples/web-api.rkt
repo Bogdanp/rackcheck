@@ -137,7 +137,7 @@ SQL
       (stop))
 
     (test-case "leaderboard"
-      (struct model (names scores-by-name)
+      (struct model (scores-by-name)
         #:transparent)
 
       (define gen:player-name
@@ -159,9 +159,9 @@ SQL
       (define/match (interpret s op)
         [(s (list 'init))
          (reset)
-         (model null (hash))]
+         (model (hash))]
 
-        [((model names scores) (list 'create name))
+        [((model scores) (list 'create name))
          (define (create-player)
            (with-handlers ([exn:fail? void])
              (request "/players" (hasheq 'name name))))
@@ -171,24 +171,27 @@ SQL
                    (hash-ref player 'name))
                  string<?))
 
+         (define (scores->names s)
+           (sort (hash-keys s) string<?))
+
          (cond
            [(regexp-match-exact? " *" name)
             (begin0 s
               (create-player)
-              (check-equal? (player-names) names))]
+              (check-equal? (player-names) (scores->names scores)))]
 
-           [(member name names)
+           [(hash-has-key? scores name)
             (begin0 s
               (create-player)
-              (check-equal? (player-names) names))]
+              (check-equal? (player-names) (scores->names scores)))]
 
            [else
-            (define names* (sort (cons name names) string<?))
-            (begin0 (model names* (hash-set scores name 0))
+            (define scores* (hash-set scores name 0))
+            (begin0 (model scores*)
               (create-player)
-              (check-equal? (player-names) names*))])]
+              (check-equal? (player-names) (scores->names scores*)))])]
 
-        [((model names scores) (list 'increase name))
+        [((model scores) (list 'increase name))
          (define scores*
            (if (hash-has-key? scores name)
                (hash-update scores name add1)
@@ -200,7 +203,7 @@ SQL
             (cons (hash-ref player 'name)
                   (hash-ref player 'score)))
           (sort (sort (hash->list scores*) string<? #:key car) > #:key cdr))
-         (model names scores*)])
+         (model scores*)])
 
       (check-property
        (make-config #:tests 30)
