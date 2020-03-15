@@ -186,7 +186,7 @@
 (define/contract (gen:list g #:max-length [max-len 128])
   (->* (gen?) (#:max-length exact-nonnegative-integer?) gen?)
   (gen:and-then
-   gen:natural
+   (gen:no-shrink gen:natural)
    (lambda (len)
      (gen
       (lambda (rng size)
@@ -197,7 +197,7 @@
 
         (stream*
          seq
-         (for/stream ([n (in-range (length seq) 0 -1)])
+         (for/stream ([n (in-range (length seq) -1 -1)])
            (take seq n))))))))
 
 (module+ test
@@ -218,13 +218,6 @@
                      (5 28 18)
                      (5 28)
                      (5)
-                     (19 17 7 7)
-                     (19 17 7)
-                     (19 17)
-                     (19)
-                     (28 5)
-                     (28)
-                     (4)
                      ()))
       (shrink (gen:list gen:natural)))))
 
@@ -310,7 +303,7 @@
                               (5 . ,gen:char-letter)
                               (2 . ,(gen:string gen:char-letter))))
              10)
-     '(0 "u" #\R #\G "uo" 0 8 #\e 2 14))))
+     '(0 "u" #\R #\G "uo" #\H 8 #\e 2 14))))
 
 ;; Local Variables:
 ;; eval: (put 'check-values 'racket-indent-function #'defun)
