@@ -4,6 +4,7 @@
           (for-label racket/base
                      racket/contract
                      racket/stream
+                     racket/string
                      rackcheck
                      rackunit))
 
@@ -147,7 +148,7 @@ Don't use them to produce values for your tests.
   (gen:filter
    (gen:string gen:char-alphanumeric)
                (lambda (s)
-                (not (string-=? s ""))))
+                (not (string=? s ""))))
   ]
 
   Write:
