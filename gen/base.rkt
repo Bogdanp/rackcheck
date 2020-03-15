@@ -108,18 +108,19 @@
   (-> (non-empty-listof any/c) gen?)
   (gen
    (lambda (rng _size)
-     (stream-dedupe
-      (let loop ([xs xs])
-        (if (null? xs)
-            (stream)
-            (stream* (random-ref xs rng) (loop (cdr xs)))))))))
+     (stream (random-ref xs rng)))))
 
 (define gen:boolean
-  (gen:one-of '(#t #f)))
+  (gen
+   (lambda (rng _size)
+     (case (random 0 2 rng)
+       [(0) (stream #f)]
+       [(1) (stream #t #f)]))))
 
 (module+ test
   (tc "boolean"
-    (check-equal? (sample gen:boolean 5) '(#f #f #t #t #f)))
+    (check-equal? (sample gen:boolean 5)
+                  '(#f #f #t #t #f)))
 
   (tc "shrinking boolean"
     (check-values (#f '())
