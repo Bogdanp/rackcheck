@@ -16,7 +16,7 @@
 (define-syntax (gen:let stx)
   (syntax-parse stx
     [(_ () body ...+)
-     #'(gen:let-helper (begin body ...))]
+     #'(gen:let-helper (let () body ...))]
 
     [(_ ([id:id g:expr] . r) body ...+)
      #'(gen:and-then g (lambda (id)
