@@ -140,7 +140,27 @@ Don't use them to produce values for your tests.
 
   This is a very brute-force way of generating values and you should
   avoid using it as much as possible, especially if the range of
-  outputs is very small compared to the domain.
+  outputs is very small compared to the domain.  Take a generator for
+  non-empty strings as an example.  Instead of:
+
+  @ex[
+  (gen:filter
+   (gen:string gen:char-alphanumeric)
+               (lambda (s)
+                (not (string-=? s ""))))
+  ]
+
+  Write:
+
+  @ex[
+  (gen:let ([hd gen:char-alphanumeric]
+            [tl (gen:string gen:char-alphanumeric)])
+   (string-append (string hd) tl))
+  ]
+
+  The latter takes a little more effort to write, but it doesn't
+  depend on the whims of the random number generator and will always
+  generate a non-empty string on the first try.
 }
 
 @defproc[(gen:choice [g gen?] ...+) gen?]{
