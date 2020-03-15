@@ -292,7 +292,8 @@
   (-> (non-empty-listof (cons/c exact-positive-integer? gen?)) gen?)
   (define total (apply + (map car freqs)))
   (gen:and-then
-   (gen:integer-in 0 (sub1 total))
+   (gen:no-shrink
+    (gen:integer-in 0 (sub1 total)))
    (lambda (x)
      (let loop ([sum 0]
                 [freqs freqs])
@@ -309,7 +310,7 @@
                               (5 . ,gen:char-letter)
                               (2 . ,(gen:string gen:char-letter))))
              10)
-     '(0 "u" #\R #\G "uo" #\H 8 #\e 2 14))))
+     '(0 "u" #\R 6 #\g "uoXa" 8 #\e 10 5))))
 
 ;; Local Variables:
 ;; eval: (put 'check-values 'racket-indent-function #'defun)
