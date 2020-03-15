@@ -237,6 +237,13 @@ Don't use them to produce values for your tests.
   @ex[(shrink gen:char-digit)]
 }
 
+@defthing[gen:char-alphanumeric gen?]{
+  Generates alphanumeric ASCII characters.
+
+  @ex[(sample gen:char-alphanumeric)]
+  @ex[(shrink gen:char-alphanumeric)]
+}
+
 @defproc[(gen:tuple [g gen?] ...+) gen?]{
   Creates a generator that produces heterogeneous lists where the
   elements are created by generating values from each @racket[g] in

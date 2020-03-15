@@ -21,6 +21,7 @@
  gen:char-in
  gen:char-letter
  gen:char-digit
+ gen:char-alphanumeric
  gen:tuple
  gen:list
  gen:vector
@@ -152,6 +153,11 @@
 
 (define gen:char-digit
   (gen:char-in 48 57))
+
+(define gen:char-alphanumeric
+  (gen:choice
+   gen:char-letter
+   gen:char-digit))
 
 (define/contract (gen:tuple . gs)
   (-> gen? gen? ... gen?)
