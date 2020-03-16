@@ -148,7 +148,7 @@
         (gen:integer-in lo hi)
         (gen:choice
          (gen:integer-in lo #xD7FF)
-         (gen:integer-in #xDFFF hi))))
+         (gen:integer-in #xE000 hi))))
 
   (gen:map g integer->char))
 
