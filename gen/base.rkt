@@ -132,17 +132,25 @@
     (check-values (#t '(#f))
       (shrink gen:boolean))))
 
+(define char-integer/c
+  (or/c (integer-in 0      #xD7FF)
+        (integer-in #xE000 #x10FFFF)))
+
 (define/contract (gen:char-in lo hi)
-  (-> (integer-in 0 #x10FFFF)
-      (integer-in 0 #x10FFFF)
-      gen?)
-  (gen:map
-   (gen:filter (gen:integer-in lo hi)
-               (lambda (n)
-                 (or (< n #xD800)
-                     (> n #xDFFF)))
-               +inf.0)
-   integer->char))
+  (->i ([lo char-integer/c]
+        [hi (lo) (and/c char-integer/c (>/c lo))])
+       [result gen?])
+  (define g
+    (if (or (and (< lo #xD800)
+                 (< hi #xD800))
+            (and (> lo #xDFFF)
+                 (> hi #xDFFF)))
+        (gen:integer-in lo hi)
+        (gen:choice
+         (gen:integer-in lo #xD7FF)
+         (gen:integer-in #xDFFF hi))))
+
+  (gen:map g integer->char))
 
 (define gen:char
   (gen:char-in 0 255))
