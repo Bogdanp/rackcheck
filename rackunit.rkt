@@ -56,7 +56,10 @@
        (fail-check message))]
 
     [(timed-out)
-     (fail-check (format "Timed out after ~a tests." (result-tests-run res)))]))
+     (fail-check (format "Timed out after ~a tests." (result-tests-run res)))]
+
+    [(passed)
+     (displayln (format "  ✓ property ~a passed ~a tests." (prop-name p) (result-tests-run res)))]))
 
 (define-syntax (check-property* stx)
   (syntax-parse stx
