@@ -101,8 +101,8 @@ Don't use them to produce values for your tests.
   @racket[g] by applying them to @racket[f] before returning them.
 }
 
-@defproc[(gen:and-then [g gen?]
-                       [f (-> any/c gen?)]) gen?]{
+@defproc[(gen:bind [g gen?]
+                   [f (-> any/c gen?)]) gen?]{
 
   Creates a generator that depends on the values produced by @racket[g].
 
@@ -111,7 +111,7 @@ Don't use them to produce values for your tests.
 
   @ex[
   (define gen:list-of-trues
-    (gen:and-then
+    (gen:bind
      gen:natural
      (lambda (len)
        (make-gen

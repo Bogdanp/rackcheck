@@ -200,7 +200,7 @@
 
 (define/contract (gen:list g #:max-length [max-len 128])
   (->* (gen?) (#:max-length exact-nonnegative-integer?) gen?)
-  (gen:and-then
+  (gen:bind
    (gen:no-shrink gen:natural)
    (lambda (len)
      (gen
@@ -300,7 +300,7 @@
 (define/contract (gen:frequency freqs)
   (-> (non-empty-listof (cons/c exact-positive-integer? gen?)) gen?)
   (define total (apply + (map car freqs)))
-  (gen:and-then
+  (gen:bind
    (gen:no-shrink
     (gen:integer-in 0 (sub1 total)))
    (lambda (x)

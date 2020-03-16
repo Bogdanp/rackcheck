@@ -17,7 +17,7 @@
 
  gen:const
  gen:map
- gen:and-then
+ gen:bind
  gen:filter
  gen:choice
  gen:sized
@@ -61,7 +61,7 @@
    (lambda (rng size)
      (stream-map f (g rng size)))))
 
-(define/contract (gen:and-then g h)
+(define/contract (gen:bind g h)
   (-> gen? (-> any/c gen?) gen?)
   (gen
    (lambda (rng size)
@@ -134,9 +134,9 @@
   (check-equal? (sample (gen:map (gen:const 1) add1) 1)
                 '(2))
 
-  (check-equal? (sample (gen:and-then (gen:const 1)
-                                      (lambda (v)
-                                        (gen:const (add1 v))))
+  (check-equal? (sample (gen:bind (gen:const 1)
+                                  (lambda (v)
+                                    (gen:const (add1 v))))
                         1)
                 '(2))
 

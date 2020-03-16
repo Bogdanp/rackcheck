@@ -19,8 +19,8 @@
      #'(gen:let-helper (let () body ...))]
 
     [(_ ([id:id g:expr] . r) body ...+)
-     #'(gen:and-then g (lambda (id)
-                         (gen:let r body ...)))]))
+     #'(gen:bind g (lambda (id)
+                     (gen:let r body ...)))]))
 
 (define-syntax-rule (gen:delay g)
   (make-gen
