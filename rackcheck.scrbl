@@ -192,6 +192,12 @@ Don't use them to produce values for your tests.
   ]
 }
 
+@defform[(gen:delay gen-expr)]{
+  Creates a generator that wraps and delays the execution of
+  @racket[gen-expr] until it is called.  This is handy for when you
+  need to write recursive generators.
+}
+
 @subsubsection{Basic Generators}
 
 @defthing[gen:natural gen?]{
