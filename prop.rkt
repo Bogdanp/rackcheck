@@ -81,11 +81,11 @@
 
 ;; result ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(struct result (config prop tests-run status args args/smallest e)
+(struct result (config prop labels tests-run status args args/smallest e)
   #:transparent)
 
-(define (make-result config prop tests-run [status 'passed] [args #f] [args/smallest #f] [exception #f])
-  (result config prop tests-run status args args/smallest exception))
+(define (make-result config prop labels tests-run status [args #f] [args/smallest #f] [exception #f])
+  (result config prop labels tests-run status args args/smallest exception))
 
 (module+ private
   (provide (struct-out result)))
@@ -93,11 +93,24 @@
 
 ;; check ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(provide
+ label!)
+
+(define current-labels
+  (make-parameter #f))
+
+(define/contract (label! s)
+  (-> (or/c false/c string?) void?)
+  (define labels (current-labels))
+  (when (and s labels)
+    (hash-update! labels s add1 0)))
+
 (define/contract (check c p)
   (-> config? prop? result?)
   (define caller-rng (current-pseudo-random-generator))
   (define rng (make-pseudo-random-generator))
-  (parameterize ([current-pseudo-random-generator rng])
+  (parameterize ([current-labels (make-hash)]
+                 [current-pseudo-random-generator rng])
     (match-define (config seed tests size deadline) c)
     (match-define (prop name arg-ids g f) p)
 
@@ -113,11 +126,11 @@
     (random-seed seed)
     (let loop ([test 1])
       (cond
-        [(= test tests)
-         (make-result c p test)]
+        [(= test (add1 tests))
+         (make-result c p (current-labels) test 'passed)]
 
         [(>= (current-inexact-milliseconds) deadline)
-         (make-result c p test 'timed-out)]
+         (make-result c p (current-labels) test 'timed-out)]
 
         [else
          (define s (g rng (size test)))
@@ -128,13 +141,14 @@
 
            [else
             (define smallest
-              (for/fold ([smallest #f])
-                        ([v (in-stream (stream-rest s))])
-                (cond
-                  [(pass? v) smallest]
-                  [else v])))
+              (parameterize ([current-labels #f])
+                (for/fold ([smallest #f])
+                          ([v (in-stream (stream-rest s))])
+                  (cond
+                    [(pass? v) smallest]
+                    [else v]))))
 
-            (make-result c p test 'falsified v smallest e)])]))))
+            (make-result c p (current-labels) test 'falsified v smallest e)])]))))
 
 (module+ private
   (provide check))

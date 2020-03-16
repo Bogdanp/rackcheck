@@ -3,6 +3,7 @@
 (require (for-syntax racket/base
                      racket/format
                      syntax/parse)
+         racket/format
          racket/port
          (except-in rackunit check)
          (only-in rackunit/private/check-info current-check-info)
@@ -59,7 +60,24 @@
      (fail-check (format "Timed out after ~a tests." (result-tests-run res)))]
 
     [(passed)
-     (displayln (format "  ✓ property ~a passed ~a tests." (prop-name p) (result-tests-run res)))]))
+     (define labels (sort (hash->list (result-labels res)) > #:key cdr))
+     (displayln (format "  ✓ property ~a passed ~a tests." (prop-name p) (result-tests-run res)))
+     (unless (null? labels)
+       (displayln "  Labels:")
+       (for ([(pair i) (in-indexed labels)])
+         (define l (car pair))
+         (define p (* 100 (/ (cdr pair) (result-tests-run res))))
+         (displayln (~a "  "
+                        (if (= i (sub1 (length labels)))
+                            "└"
+                            "├")
+                        " "
+                        (~r #:min-width 5
+                            #:precision '(= 2)
+                            #:pad-string " "
+                            p)
+                        "% "
+                        l))))]))
 
 (define-syntax (check-property* stx)
   (syntax-parse stx

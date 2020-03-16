@@ -426,6 +426,26 @@ Don't use them to produce values for your tests.
   ]
 }
 
+@defproc[(label! [s (or/c false/c string?)]) void?]{
+  Keeps track of how many times @racket[s] appears in the current set
+  of tests.  Use this to classify and keep track of what categories
+  the inputs to your properties fall under.
+
+  Does nothing when @racket[s] is @racket[#f].
+
+  @ex[
+  (check-property
+   (property
+    ([a gen:natural]
+     [b gen:natural])
+    (label!
+     (case a
+      [(0)  "zero"]
+      [else "non-zero"]))
+    (+ a b)))
+  ]
+}
+
 @defproc[(config? [v any/c]) boolean?]{
   Returns @racket[#t] when @racket[v] is a config value.
 }
