@@ -124,13 +124,13 @@
           (apply f args))))
 
     (random-seed seed)
-    (let loop ([test 1])
+    (let loop ([test 0])
       (cond
-        [(= test (add1 tests))
+        [(= test tests)
          (make-result c p (current-labels) test 'passed)]
 
         [(>= (current-inexact-milliseconds) deadline)
-         (make-result c p (current-labels) test 'timed-out)]
+         (make-result c p (current-labels) (add1 test) 'timed-out)]
 
         [else
          (define s (g rng (size test)))
@@ -148,7 +148,7 @@
                     [(pass? v) smallest]
                     [else v]))))
 
-            (make-result c p (current-labels) test 'falsified v smallest e)])]))))
+            (make-result c p (current-labels) (add1 test) 'falsified v smallest e)])]))))
 
 (module+ private
   (provide check))
