@@ -77,7 +77,7 @@
 
 (define/contract (gen:integer-in lo hi)
   (->i ([lo exact-integer?]
-        [hi (lo) (>/c lo)])
+        [hi (lo) (>=/c lo)])
        [result gen?])
   (gen
    (lambda (rng _size)
