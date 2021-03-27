@@ -8,6 +8,8 @@
 
 (define done (gensym 'done))
 
+;; Flattens one level of nested streams into a continuous stream.
+;; (streamof (streamof a)) -> (streamof a)
 (struct flattened-stream (next current streamss)
   #:methods gen:stream
   [(define (stream-empty? s)
