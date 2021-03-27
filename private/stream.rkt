@@ -20,26 +20,20 @@
      (flattened-stream* (flattened-stream-streams s)))])
 
 (define (flattened-stream* streams)
-  (cond
-    [(null? streams)
-     (flattened-stream done null)]
-
-    [(stream-empty? (car streams))
-     (make-flattened-stream (cdr streams))]
-
-    [else
-     (define head (car streams))
-     (flattened-stream
-      (lambda ()
-        (stream-first head))
-      (cons
-       (stream-rest head)
-       (cdr streams)))]))
+  (define head (car streams))
+  (if (stream-empty? head)
+      (make-flattened-stream (cdr streams))
+      (flattened-stream
+       (lambda ()
+         (stream-first head))
+       (cons
+        (stream-rest head)
+        (cdr streams)))))
 
 (define (make-flattened-stream streams)
   (cond
     [(stream-empty? streams)
-     (flattened-stream done null)]
+     (flattened-stream done #f)]
 
     [else
      (define head (stream-first streams))
