@@ -8,7 +8,7 @@
 
 (define done (gensym 'done))
 
-(struct flattened-stream (next streams)
+(struct flattened-stream (next current streamss)
   #:methods gen:stream
   [(define (stream-empty? s)
      (eq? (flattened-stream-next s) done))
@@ -17,28 +17,25 @@
      ((flattened-stream-next s)))
 
    (define (stream-rest s)
-     (flattened-stream* (flattened-stream-streams s)))])
+     (flattened-stream*
+      (flattened-stream-current s)
+      (flattened-stream-streamss s)))])
 
-(define (flattened-stream* streams)
-  (define head (car streams))
-  (if (stream-empty? head)
-      (make-flattened-stream (cdr streams))
+(define (flattened-stream* current streamss)
+  (if (stream-empty? current)
+      (make-flattened-stream streamss)
       (flattened-stream
        (lambda ()
-         (stream-first head))
-       (cons
-        (stream-rest head)
-        (cdr streams)))))
+         (stream-first current))
+       (stream-rest current)
+       streamss)))
 
-(define (make-flattened-stream streams)
-  (cond
-    [(stream-empty? streams)
-     (flattened-stream done #f)]
-
-    [else
-     (define head (stream-first streams))
-     (define tail (stream-rest streams))
-     (flattened-stream* (cons head tail))]))
+(define (make-flattened-stream streamss)
+  (if (stream-empty? streamss)
+      (flattened-stream done #f empty-stream)
+      (flattened-stream*
+       (stream-first streamss)
+       (stream-rest streamss))))
 
 (module+ test
   (require rackunit)
