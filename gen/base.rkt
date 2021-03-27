@@ -210,7 +210,7 @@
             (for/list ([_ (in-range len)])
               (stream-first (g rng size)))))
 
-        (stream*
+        (stream-cons
          seq
          (for/stream ([n (in-range (length seq) -1 -1)])
            (take seq n))))))))

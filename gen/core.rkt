@@ -66,7 +66,7 @@
   (gen
    (lambda (rng size)
      (stream-dedupe
-      (stream-unroll
+      (stream-flatten
        (for/stream ([v (in-stream (g rng size))])
          ((h v) rng size)))))))
 

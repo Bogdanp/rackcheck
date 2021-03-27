@@ -3,43 +3,48 @@
 (require racket/stream)
 
 (provide
- (rename-out [make-unroll stream-unroll])
+ (rename-out [make-flattened-stream stream-flatten])
  stream-dedupe)
 
-(define canary
-  (let ()
-    (struct canary ())
-    (canary)))
+(define done (gensym 'done))
 
-(struct unroll (next tail)
+(struct flattened-stream (next streams)
   #:methods gen:stream
   [(define (stream-empty? s)
-     (eq? (unroll-next s) canary))
+     (eq? (flattened-stream-next s) done))
 
    (define (stream-first s)
-     (unroll-next s))
+     ((flattened-stream-next s)))
 
    (define (stream-rest s)
-     (make-unroll (unroll-tail s)))])
+     (flattened-stream* (flattened-stream-streams s)))])
 
-(define (make-unroll ss)
-  (define-values (next tail)
-    (let loop ([ss ss])
-      (cond
-        [(stream-empty? ss)
-         (values canary empty-stream)]
+(define (flattened-stream* streams)
+  (cond
+    [(null? streams)
+     (flattened-stream done null)]
 
-        [(stream-empty? (stream-first ss))
-         (loop (stream-rest ss))]
+    [(stream-empty? (car streams))
+     (make-flattened-stream (cdr streams))]
 
-        [else
-         (define head (stream-first ss))
-         (values (stream-first head)
-                 (stream-cons
-                  (stream-rest head)
-                  (stream-rest ss)))])))
+    [else
+     (define head (car streams))
+     (flattened-stream
+      (lambda ()
+        (stream-first head))
+      (cons
+       (stream-rest head)
+       (cdr streams)))]))
 
-  (unroll next tail))
+(define (make-flattened-stream streams)
+  (cond
+    [(stream-empty? streams)
+     (flattened-stream done null)]
+
+    [else
+     (define head (stream-first streams))
+     (define tail (stream-rest streams))
+     (flattened-stream* (cons head tail))]))
 
 (module+ test
   (require rackunit)
@@ -52,7 +57,7 @@
        (expt 2 n))))
 
   (check-equal?
-   (stream->list (make-unroll s))
+   (stream->list (make-flattened-stream s))
    '(0 0 1 1 2 2 2 4 4 3 6 8 4 8 16)))
 
 (define (stream-dedupe s)
