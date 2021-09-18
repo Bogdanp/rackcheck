@@ -133,7 +133,7 @@
          (make-result c p (current-labels) (add1 test) 'timed-out)]
 
         [else
-         (define s (g rng (size test)))
+         (define s (g rng (size (add1 test))))
          (define v (stream-first s))
          (cond
            [(pass? v)
