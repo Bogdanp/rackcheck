@@ -97,7 +97,7 @@ SQL
            rackunit
            rackunit/text-ui)
 
-  (define stop #f)
+  (define stop void)
 
   (define (reset)
     (query-exec (current-conn) "DELETE FROM players"))
@@ -120,6 +120,79 @@ SQL
       [_
        (error 'server (port->string out))]))
 
+  (struct model (scores-by-name)
+    #:transparent)
+
+  (define gen:player-name
+    (gen:let ([given (gen:string gen:char-letter)]
+              [family (gen:string gen:char-letter)])
+      (if (and (string=? given "")
+               (string=? family ""))
+          ""
+          (format "~a ~a" given family))))
+
+  (define gen:ops
+    (gen:let ([names (gen:no-shrink
+                      (gen:resize
+                       (gen:filter
+                        (gen:list gen:player-name)
+                        (compose1 not null?))
+                       10))]
+              [ops (gen:list
+                    (gen:choice
+                     (gen:tuple (gen:const 'create) (gen:one-of names))
+                     (gen:tuple (gen:const 'increase) (gen:one-of names))))])
+      (cons '(init) ops)))
+
+  (define/match (interpret s _op)
+    [(_ `(init))
+     (reset)
+     (model (hash))]
+
+    [((model scores) `(create ,name))
+     (define (create-player)
+       (with-handlers ([exn:fail? void])
+         (request "/players" (hasheq 'name name))))
+
+     (define (player-names)
+       (sort (for/list ([player (in-list (request "/players"))])
+               (hash-ref player 'name))
+             string<?))
+
+     (define (scores->names s)
+       (sort (hash-keys s) string<?))
+
+     (cond
+       [(regexp-match-exact? " *" name)
+        (begin0 s
+          (create-player)
+          (check-equal? (player-names) (scores->names scores)))]
+
+       [(hash-has-key? scores name)
+        (begin0 s
+          (create-player)
+          (check-equal? (player-names) (scores->names scores)))]
+
+       [else
+        (define scores* (hash-set scores name 0))
+        (begin0 (model scores*)
+          (create-player)
+          (check-equal? (player-names) (scores->names scores*)))])]
+
+    [((model scores) `(increase ,name))
+     (define scores*
+       (if (hash-has-key? scores name)
+           (hash-update scores name add1)
+           scores))
+
+     (request (format "/scores/~a" name) (hasheq))
+     (check-equal?
+      (for/list ([player (in-list (request "/players"))])
+        (cons (hash-ref player 'name)
+              (hash-ref player 'score)))
+      (sort (sort (hash->list scores*) string<? #:key car) > #:key cdr))
+     (model scores*)])
+
   (run-tests
    (test-suite
     "web-api"
@@ -137,74 +210,6 @@ SQL
       (stop))
 
     (test-case "leaderboard"
-      (struct model (scores-by-name)
-        #:transparent)
-
-      (define gen:player-name
-        (gen:let ([given (gen:string gen:char-letter)]
-                  [family (gen:string gen:char-letter)])
-          (format "~a ~a" given family)))
-
-      (define gen:ops
-        (gen:let ([names (gen:no-shrink
-                          (gen:resize (gen:filter (gen:list gen:player-name)
-                                                  (compose1 not null?))
-                                      10))]
-                  [ops (gen:list
-                        (gen:choice
-                         (gen:tuple (gen:const 'create) (gen:one-of names))
-                         (gen:tuple (gen:const 'increase) (gen:one-of names))))])
-          (cons '(init) ops)))
-
-      (define/match (interpret s op)
-        [(s (list 'init))
-         (reset)
-         (model (hash))]
-
-        [((model scores) (list 'create name))
-         (define (create-player)
-           (with-handlers ([exn:fail? void])
-             (request "/players" (hasheq 'name name))))
-
-         (define (player-names)
-           (sort (for/list ([player (in-list (request "/players"))])
-                   (hash-ref player 'name))
-                 string<?))
-
-         (define (scores->names s)
-           (sort (hash-keys s) string<?))
-
-         (cond
-           [(regexp-match-exact? " *" name)
-            (begin0 s
-              (create-player)
-              (check-equal? (player-names) (scores->names scores)))]
-
-           [(hash-has-key? scores name)
-            (begin0 s
-              (create-player)
-              (check-equal? (player-names) (scores->names scores)))]
-
-           [else
-            (define scores* (hash-set scores name 0))
-            (begin0 (model scores*)
-              (create-player)
-              (check-equal? (player-names) (scores->names scores*)))])]
-
-        [((model scores) (list 'increase name))
-         (define scores*
-           (if (hash-has-key? scores name)
-               (hash-update scores name add1)
-               scores))
-
-         (request (format "/scores/~a" name) (hasheq))
-         (check-equal?
-          (for/list ([player (in-list (request "/players"))])
-            (cons (hash-ref player 'name)
-                  (hash-ref player 'score)))
-          (sort (sort (hash->list scores*) string<? #:key car) > #:key cdr))
-         (model scores*)])
-
       (check-property
        (make-config #:tests 30)
        (property ([ops gen:ops])
