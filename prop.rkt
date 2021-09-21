@@ -22,10 +22,10 @@
 
 (define-syntax (property stx)
   (syntax-parse stx
-    [(_ (~optional name:id)
+    [(_ (~optional (~seq #:name name:expr))
         ([id:id g:expr] ...)
         body ...+)
-     #'(prop (~? 'name 'unnamed)
+     #'(prop (~? name 'unnamed)
              (list 'id ...)
              (gen:let ([id g] ...)
                (list id ...))
@@ -36,7 +36,7 @@
   (syntax-parse stx
     [(_ name:id binds body ...+)
      #'(define name
-         (property name binds body ...))]))
+         (property #:name 'name binds body ...))]))
 
 (module+ test
   (require "gen/base.rkt")

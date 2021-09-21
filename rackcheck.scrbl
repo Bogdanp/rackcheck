@@ -389,7 +389,7 @@ Don't use them to produce values for your tests.
   Returns @racket[#t] when @racket[v] is a property.
 }
 
-@defform[(property ([id gen-expr] ...) body ...+)]{
+@defform[(property [#:name name symbol? 'unnamed] ([id gen-expr] ...) body ...+)]{
   Declares a property where the inputs are one or more generators.
 
   @ex[
