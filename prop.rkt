@@ -6,7 +6,8 @@
          racket/match
          racket/random
          racket/stream
-         "gen/syntax.rkt")
+         "gen/syntax.rkt"
+         (submod "gen/shrink-tree.rkt" private))
 
 ;; property ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -22,10 +23,10 @@
 
 (define-syntax (property stx)
   (syntax-parse stx
-    [(_ (~optional name:id)
+    [(_ (~optional (~or name-id:id (~seq #:name name-ex:expr)))
         ([id:id g:expr] ...)
         body ...+)
-     #'(prop (~? 'name 'unnamed)
+     #'(prop (~? 'name-id (~? name-ex 'unnamed))
              (list 'id ...)
              (gen:let ([id g] ...)
                (list id ...))
@@ -112,16 +113,26 @@
   (parameterize ([current-labels (make-hash)]
                  [current-pseudo-random-generator rng])
     (match-define (config seed tests size deadline) c)
-    (match-define (prop name arg-ids g f) p)
+    (match-define (prop _name _arg-ids g f) p)
 
-    (define e #f)
+    (define exn? #f)
     (define (pass? args)
-      (with-handlers ([(lambda _ #t)
+      (with-handlers ([(lambda (_) #t)
                        (lambda (the-exn)
                          (begin0 #f
-                           (set! e the-exn)))])
+                           (set! exn? the-exn)))])
         (parameterize ([current-pseudo-random-generator caller-rng])
           (apply f args))))
+
+    (define (descend-shrinks trees last-failing-value)
+      (cond
+        [(stream-empty? trees) last-failing-value]
+        [else
+         (define tree (stream-first trees))
+         (define value (shrink-tree-val tree))
+         (if (pass? value)
+             (descend-shrinks (stream-rest trees) last-failing-value)
+             (descend-shrinks (shrink-tree-shrinks (stream-first trees)) value))]))
 
     (random-seed seed)
     (let loop ([test 0])
@@ -133,22 +144,17 @@
          (make-result c p (current-labels) (add1 test) 'timed-out)]
 
         [else
-         (define s (g rng (size (add1 test))))
-         (define v (stream-first s))
+         (define tree (g rng (size (add1 test))))
+         (define value (shrink-tree-val tree))
          (cond
-           [(pass? v)
+           [(pass? value)
             (loop (add1 test))]
 
            [else
-            (define smallest
+            (define shrunk?
               (parameterize ([current-labels #f])
-                (for/fold ([smallest #f])
-                          ([v (in-stream (stream-rest s))])
-                  (cond
-                    [(pass? v) smallest]
-                    [else v]))))
-
-            (make-result c p (current-labels) (add1 test) 'falsified v smallest e)])]))))
+                (descend-shrinks (shrink-tree-shrinks tree) #f)))
+            (make-result c p (current-labels) (add1 test) 'falsified value shrunk? exn?)])]))))
 
 (module+ private
   (provide check))
