@@ -42,7 +42,7 @@
   (reseed)
   (check-equal?
    (sample g 5)
-   '(0 0 9 12 90))
+   '(0 1 6 42 44))
 
   (define gen:variable
     (gen:let ([h gen:char-letter]

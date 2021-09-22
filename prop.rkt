@@ -4,9 +4,11 @@
                      syntax/parse)
          racket/contract
          racket/match
+         racket/promise
          racket/random
-         racket/stream
-         "gen/syntax.rkt")
+         "gen/syntax.rkt"
+         "gen/core.rkt"
+         (submod "gen/core.rkt" private))
 
 ;; property ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -114,14 +116,20 @@
     (match-define (config seed tests size deadline) c)
     (match-define (prop name arg-ids g f) p)
 
-    (define e #f)
+    (define exn? #f)
     (define (pass? args)
       (with-handlers ([(lambda _ #t)
                        (lambda (the-exn)
                          (begin0 #f
-                           (set! e the-exn)))])
+                           (set! exn? the-exn)))])
         (parameterize ([current-pseudo-random-generator caller-rng])
           (apply f args))))
+    
+    (define (shrink st)
+      (parameterize ([current-labels #f])
+        (match-let ([(shrink-tree val shrinks) st])
+          (and (not (pass? val))
+               (or (ormap shrink (force shrinks)) val)))))
 
     (random-seed seed)
     (let loop ([test 0])
@@ -133,22 +141,12 @@
          (make-result c p (current-labels) (add1 test) 'timed-out)]
 
         [else
-         (define s (g rng (size (add1 test))))
-         (define v (stream-first s))
-         (cond
-           [(pass? v)
-            (loop (add1 test))]
-
-           [else
-            (define smallest
-              (parameterize ([current-labels #f])
-                (for/fold ([smallest #f])
-                          ([v (in-stream (stream-rest s))])
-                  (cond
-                    [(pass? v) smallest]
-                    [else v]))))
-
-            (make-result c p (current-labels) (add1 test) 'falsified v smallest e)])]))))
+         (let* ([st (g rng (size (add1 test)))]
+                [val (shrink-tree-val st)])
+           (if (pass? val)
+               (loop (add1 test))
+               (let ([shrunk? (ormap shrink (force (shrink-tree-shrinks st)))])
+                 (make-result c p (current-labels) (add1 test) 'falsified val shrunk? exn?))))]))))
 
 (module+ private
   (provide check))

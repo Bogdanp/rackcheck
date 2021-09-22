@@ -1,9 +1,10 @@
 #lang racket/base
 
 (require racket/contract
-         racket/random
-         racket/stream
-         "../private/stream.rkt")
+         racket/function
+         racket/match
+         racket/promise
+         racket/random)
 
 (provide
  exn:fail:gen?
@@ -11,6 +12,10 @@
 
  gen?
  make-gen
+ shrink-tree?
+ make-shrink-tree
+ shrink-tree-val
+ shrink-tree-shrinks
  generator/c
  sample
  shrink
@@ -18,7 +23,7 @@
  gen:const
  gen:map
  gen:bind
- gen:filter
+ ;gen:filter
  gen:choice
  gen:sized
  gen:resize
@@ -28,8 +33,31 @@
 (struct exn:fail:gen exn:fail ())
 (struct exn:fail:gen:exhausted exn:fail:gen ())
 
+(struct shrink-tree (val shrinks))
+
+(define/contract (make-shrink-tree val [shrink (const '())])
+  (->* (any/c) ((-> any/c (listof any/c))) shrink-tree?)
+  (shrink-tree
+   val
+   (lazy (map (lambda (v) (make-shrink-tree v shrink))
+              (shrink val)))))
+
+(define (shrink-tree-map f st)
+  (match-let ([(shrink-tree val shrinks) st])
+    (shrink-tree
+     (f val)
+     (lazy (map (curry shrink-tree-map f)
+                (force shrinks))))))
+
+(define (shrink-tree-join st)
+  (match-let ([(shrink-tree (shrink-tree inner-val inner-shrinks) outer-shrinks) st])
+    (shrink-tree
+     inner-val
+     (lazy (append (map shrink-tree-join (force outer-shrinks))
+                   (force inner-shrinks))))))
+
 (define generator/c
-  (-> pseudo-random-generator? exact-nonnegative-integer? (stream/c any/c)))
+  (-> pseudo-random-generator? exact-nonnegative-integer? shrink-tree?))
 
 (struct gen (f)
   #:property prop:procedure (struct-field-index f))
@@ -41,36 +69,54 @@
 (define/contract (sample g [n 10] [rng (current-pseudo-random-generator)])
   (->* (gen?) (exact-positive-integer? pseudo-random-generator?) (listof any/c))
   (for/list ([s (in-range n)])
-    (stream-first (g rng (expt s 2)))))
+    (shrink-tree-val (g rng (expt s 2)))))
 
-(define/contract (shrink g [size 30] [rng (current-pseudo-random-generator)])
-  (->* (gen?) (exact-positive-integer? pseudo-random-generator?) (values any/c (listof any/c)))
-  (define s (g rng size))
-  (values
-   (stream-first s)
-   (stream->list (stream-rest s))))
+; it would be pretty neat to have a visual program for exploring shrink trees
+(define/contract (shrink g [size 30] [n 4] [depth 8] [rng (current-pseudo-random-generator)])
+  (->* (gen?) (exact-positive-integer?
+               exact-positive-integer?
+               exact-positive-integer?
+               pseudo-random-generator?)
+       (values any/c (listof (listof any/c))))
+  (match-let ([(shrink-tree val shrinks) (g rng size)])
+    (values
+     val
+     (let* ([shrinks (force shrinks)]
+            [starts (random-sample shrinks (min n (length shrinks)) rng #:replacement? #f)])
+       (for/list ([st starts])
+         (get-shrinks st depth rng))))))
+
+(define (get-shrinks st depth rng)
+  (if (zero? depth)
+      '()
+      (match-let ([(shrink-tree val shrinks) st])
+        (let ([shrinks (force shrinks)])
+          (if (null? shrinks)
+              (list val)
+              (cons val (get-shrinks (random-ref shrinks rng) (sub1 depth) rng)))))))
 
 (define (gen:const v)
   (gen
    (lambda (_rng _size)
-     (stream v))))
+     (shrink-tree v (lazy '())))))
 
 (define/contract (gen:map g f)
   (-> gen? (-> any/c any/c) gen?)
   (gen
    (lambda (rng size)
-     (stream-map f (g rng size)))))
+     (shrink-tree-map f (g rng size)))))
 
 (define/contract (gen:bind g h)
   (-> gen? (-> any/c gen?) gen?)
   (gen
    (lambda (rng size)
-     (stream-dedupe
-      (stream-flatten
-       (for/stream ([v (in-stream (g rng size))])
-         ((h v) rng size)))))))
+     (let ([g-st (g rng size)])
+       (shrink-tree-join
+        (shrink-tree-map
+         (λ (val) ((h val) rng size))
+         g-st))))))
 
-(define/contract (gen:filter g p [max-attempts 1000])
+#;(define/contract (gen:filter g p [max-attempts 1000])
   (->* (gen? (-> any/c boolean?))
        ((or/c exact-positive-integer? +inf.0))
        gen?)
@@ -117,10 +163,10 @@
   (-> gen? gen?)
   (gen
    (lambda (rng size)
-     (stream (stream-first (g rng size))))))
+     (shrink-tree (shrink-tree-val (g rng size)) (lazy '())))))
 
 (module+ private
-  (provide gen))
+  (provide gen shrink-tree))
 
 (module+ test
   (require rackunit)
@@ -140,12 +186,12 @@
                         1)
                 '(2))
 
-  (check-equal? (sample (gen:filter (gen:const 1)
+  #;(check-equal? (sample (gen:filter (gen:const 1)
                                     number?)
                         1)
                 '(1))
 
-  (check-exn
+  #;(check-exn
    exn:fail:gen?
    (lambda ()
      (sample (gen:filter (gen:const 1)
