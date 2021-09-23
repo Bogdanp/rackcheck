@@ -125,11 +125,10 @@
         (parameterize ([current-pseudo-random-generator caller-rng])
           (apply f args))))
     
-    (define (shrink st)
+    (define (descend-shrinks st)
       (parameterize ([current-labels #f])
-        (match-let ([(shrink-tree val shrinks) st])
-          (and (not (pass? val))
-               (or (ormap shrink (force shrinks)) val)))))
+        (and (not (pass? (value st)))
+             (or (ormap descend-shrinks (shrink st)) (value st)))))
 
     (random-seed seed)
     (let loop ([test 0])
@@ -142,10 +141,10 @@
 
         [else
          (let* ([st (g rng (size (add1 test)))]
-                [val (shrink-tree-val st)])
+                [val (value st)])
            (if (pass? val)
                (loop (add1 test))
-               (let ([shrunk? (ormap shrink (force (shrink-tree-shrinks st)))])
+               (let ([shrunk? (ormap descend-shrinks (shrink st))])
                  (make-result c p (current-labels) (add1 test) 'falsified val shrunk? exn?))))]))))
 
 (module+ private

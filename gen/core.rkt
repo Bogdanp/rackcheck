@@ -13,12 +13,16 @@
  gen?
  make-gen
  shrink-tree?
+ build-shrink-tree
  make-shrink-tree
- shrink-tree-val
- shrink-tree-shrinks
+ shrink-tree-map
+ value
+ shrink
  generator/c
  sample
- shrink
+ sample-shrink
+ eager-shrink
+ full-shrink
 
  gen:const
  gen:map
@@ -35,19 +39,31 @@
 
 (struct shrink-tree (val shrinks))
 
-(define/contract (make-shrink-tree val [shrink (const '())])
-  (->* (any/c) ((-> any/c (listof any/c))) shrink-tree?)
+(define/contract (value st)
+  (-> shrink-tree? any/c)
+  (shrink-tree-val st))
+
+(define/contract (shrink st)
+  (-> shrink-tree? (listof shrink-tree?))
+  (force (shrink-tree-shrinks st)))
+
+(define/contract (build-shrink-tree val shr)
+  (-> any/c (-> any/c (listof any/c)) shrink-tree?)
   (shrink-tree
    val
-   (lazy (map (lambda (v) (make-shrink-tree v shrink))
-              (shrink val)))))
+   (lazy (map (lambda (v) (build-shrink-tree v shr))
+              (shr val)))))
 
-(define (shrink-tree-map f st)
-  (match-let ([(shrink-tree val shrinks) st])
-    (shrink-tree
-     (f val)
-     (lazy (map (curry shrink-tree-map f)
-                (force shrinks))))))
+(define/contract (make-shrink-tree val [shrinks (lazy '())])
+  (->* (any/c) ((promise/c (listof any/c))) shrink-tree?)
+  (shrink-tree val shrinks))
+
+(define/contract (shrink-tree-map f st)
+  (-> (-> any/c any/c) shrink-tree? shrink-tree?)
+  (shrink-tree
+   (f (value st))
+   (lazy (map (curry shrink-tree-map f)
+              (shrink st)))))
 
 (define (shrink-tree-join st)
   (match-let ([(shrink-tree (shrink-tree inner-val inner-shrinks) outer-shrinks) st])
@@ -72,28 +88,61 @@
     (shrink-tree-val (g rng (expt s 2)))))
 
 ; it would be pretty neat to have a visual program for exploring shrink trees
-(define/contract (shrink g [size 30] [n 4] [depth 8] [rng (current-pseudo-random-generator)])
+(define/contract (sample-shrink g [size 30] [n 4] [depth 8] [rng (current-pseudo-random-generator)])
   (->* (gen?) (exact-positive-integer?
                exact-positive-integer?
                exact-positive-integer?
                pseudo-random-generator?)
        (values any/c (listof (listof any/c))))
-  (match-let ([(shrink-tree val shrinks) (g rng size)])
+  (let ([st (g rng size)])
     (values
-     val
-     (let* ([shrinks (force shrinks)]
+     (shrink-tree-val st)
+     (let* ([shrinks (shrink st)]
             [starts (random-sample shrinks (min n (length shrinks)) rng #:replacement? #f)])
        (for/list ([st starts])
-         (get-shrinks st depth rng))))))
+         (let loop ([st st]
+                    [depth depth])
+           (if (zero? depth)
+               '()
+               (match-let ([(shrink-tree val shrinks) st])
+                 (let ([shrinks (force shrinks)])
+                   (if (null? shrinks)
+                       (list val)
+                       (cons val (loop (random-ref shrinks rng) (sub1 depth)))))))))))))
 
-(define (get-shrinks st depth rng)
-  (if (zero? depth)
-      '()
-      (match-let ([(shrink-tree val shrinks) st])
-        (let ([shrinks (force shrinks)])
-          (if (null? shrinks)
-              (list val)
-              (cons val (get-shrinks (random-ref shrinks rng) (sub1 depth) rng)))))))
+(define/contract (eager-shrink g [size 30] [rng (current-pseudo-random-generator)])
+  (->* (gen?) (exact-positive-integer? pseudo-random-generator?)
+       (values any/c (listof any/c)))
+  (let ([st (g rng size)])
+    (values
+     (shrink-tree-val st)
+     (let loop ([st st])
+       (let ([shrinks (shrink st)])
+         (if (null? shrinks)
+             '()
+             (cons (shrink-tree-val (car shrinks))
+                   (loop (car shrinks)))))))))
+
+(define/contract (full-shrink g [size 30] [first-n? #f] [max-depth? #f]
+                              [rng (current-pseudo-random-generator)])
+  (->* (gen?) (exact-positive-integer?
+               (or/c false/c exact-positive-integer?)
+               (or/c false/c exact-nonnegative-integer?)
+               pseudo-random-generator?)
+       (listof any/c))
+  (let ([st (g rng size)])
+    (let loop ([st st]
+               [depth 0])
+      (cons (value st)
+            (if (and max-depth? (= max-depth? depth))
+                (list '...)
+                (let across ([shrinks (shrink st)]
+                             [n 0])
+                  (cond
+                    [(null? shrinks) '()]
+                    [(and first-n? (= first-n? n)) (list '...)]
+                    [else (cons (loop (car shrinks) (add1 depth))
+                                (across (cdr shrinks) (add1 n)))])))))))
 
 (define (gen:const v)
   (gen

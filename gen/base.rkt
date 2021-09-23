@@ -45,22 +45,17 @@
       (append (if (negative? n) (list (abs n)) '())
               (cons 0 (map (curry - n) (halves n))))))
 
-#;(define k 4294967087)
 (define gen:natural
   (gen
    (lambda (rng size)
      (let ([n (random 0 (add1 size) rng)])
-       (make-shrink-tree
-        n
-        shrink-integer)))))
+       (build-shrink-tree n shrink-integer)))))
 
 (define gen:integer
   (gen
    (lambda (rng size)
      (let ([n (random (- size) (add1 size) rng)])
-       (make-shrink-tree
-        n
-        shrink-integer)))))
+       (build-shrink-tree n shrink-integer)))))
 
 (module+ test
   (require rackunit)
@@ -83,19 +78,19 @@
 
   (tc "shrinking naturals"
     (check-values (9 '((0) (5 3 0) (7 4 0) (8 6 5 3 2 1 0)))
-      (shrink gen:natural))
+      (sample-shrink gen:natural))
 
     (check-values (396 '((393 387 291 273 271 267 263 0)
                          (198 149 148 130 98 49 25 13)
                          (372 361 350 348 347 337 327 322)
                          (384 0)))
-      (shrink gen:natural 500))
+      (sample-shrink gen:natural 500))
 
     (check-values (74 '((0)
                         (73 69 52 51 39 35 33 29)
                         (56 28 0)
                         (65 64 56 0)))
-      (shrink gen:natural 300))))
+      (sample-shrink gen:natural 300))))
 
 (define/contract (gen:integer-in lo hi)
   (->i ([lo exact-integer?]
@@ -111,15 +106,14 @@
 
   (tc "shrinking integer-in"
     (check-values (6 '((0) (3 2 0) (5 0)))
-      (shrink (gen:integer-in 0 20)))
+      (sample-shrink (gen:integer-in 0 20)))
 
     (check-values (-28 '((-200)
                          (-114 -116 -117 -137 -140 -155 -156 -167)
                          (-30 -32 -33 -43 -200)
                          (-38 -78 -93 -146 -149 -150 -175 -187)))
-      (shrink (gen:integer-in -200 20)))))
+      (sample-shrink (gen:integer-in -200 20)))))
 
-;; TODO?: shrinking
 (define gen:real
   (gen
    (lambda (rng _size)
@@ -134,12 +128,9 @@
 (define gen:boolean
   (gen
    (lambda (rng _size)
-     (make-shrink-tree
-      (case (random 0 2 rng)
-        [(0) #f]
-        [(1) #t])
-      (lambda (b)
-        (if b (list #f) '()))))))
+     (case (random 0 2 rng)
+       [(0) (make-shrink-tree #f)]
+       [(1) (make-shrink-tree #t (lazy (list (make-shrink-tree #f))))]))))
 
 (module+ test
   (tc "boolean"
@@ -148,13 +139,13 @@
 
   (tc "shrinking boolean"
     (check-values (#f '())
-      (shrink gen:boolean))
+      (sample-shrink gen:boolean))
 
     (check-values (#f '())
-      (shrink gen:boolean))
+      (sample-shrink gen:boolean))
 
     (check-values (#t '((#f)))
-      (shrink gen:boolean))))
+      (sample-shrink gen:boolean))))
 
 (define char-integer/c
   (or/c (integer-in 0      #xD7FF)
@@ -209,53 +200,55 @@
 
   (tc "shrinking tuple"
     (check-values ('(16 |195476|)
-                   '(((3 |195446|)
-                      (2 |19546|)
-                      (5 |19346|)
-                      (6 |09346|)
-                      (7 |09046|)
-                      (0 |09046|))
-                     ((12 |175476|)
-                      (10 |075476|)
-                      (8 |075476|)
-                      (6 |075476|)
-                      (0 |075476|))))
-      (shrink (gen:tuple gen:natural (gen:symbol gen:char-digit)) 20 2 8))))
+                   '(((3 |195476|)
+                      (11 |95476|)
+                      (18 |95476|)
+                      (2 |55476|)
+                      (17 |55476|)
+                      (10 |5547|)
+                      (18 |5547|)
+                      (9 |4547|))
+                     ((12 |195476|)
+                      (9 |195476|)
+                      (0 |195476|))))
+      (sample-shrink (gen:tuple gen:natural (gen:symbol gen:char-digit)) 20 2 8))))
 
-(define (shrink-one st*)
-  (match st*
+(define (shrink-one xs)
+  (match xs
     ['() '()]
-    [(cons st st*)
-     (append (for/list ([st-st* (force (shrink-tree-shrinks st))])
-               (cons st-st* st*))
-             (for/list ([s-st* (shrink-one st*)])
-               (cons st s-st*)))]))
+    [(cons x xs)
+     (append (for/list ([shrunk-x (shrink x)])
+               (cons shrunk-x xs))
+             (for/list ([shrunk-xs (shrink-one xs)])
+               (cons x xs)))]))
 
-(define (removes k n st*)
+(define (removes k n xs)
   (cond
     [(> k n) '()]
     [(= k n) '(())]
-    [else (let-values ([(st*-l st*-r) (split-at st* k)])
-            (cons st*-r (for/list ([rs-st* (removes k (- n k) st*-r)])
-                          (append st*-l rs-st*))))]))
+    [else (let-values ([(xs-l xs-r) (split-at xs k)])
+            (cons xs-r (for/list ([r-xs (removes k (- n k) xs-r)])
+                         (append xs-l r-xs))))]))
 
-(define (shrink-list st*)
-  (let ([n (length st*)])
-    (append
-     (append* (for/list ([k (halves n)])
-                (removes k n st*)))
-     (shrink-one st*))))
+(define (shrink-list xs)
+  (let ([n (length xs)])
+    (if (= n 0)
+        '()
+        (append
+         (append* (for/list ([k (cons n (halves n))])
+                    (removes k n xs)))
+         (shrink-one xs)))))
 
 (define/contract (gen:list g #:max-length [max-len 128])
   (->* (gen?) (#:max-length exact-nonnegative-integer?) gen?)
-  (gen:map
-   (gen
-    (lambda (rng size)
-      (let* ([len (min (random 0 (add1 size) rng) max-len)]
-             [st* (for/list ([_ (in-range len)])
-                    (g rng size))])
-        (make-shrink-tree st* shrink-list))))
-   (curry map shrink-tree-val)))
+  (gen
+   (lambda (rng size)
+     (let* ([len (min (random 0 (add1 size) rng) max-len)]
+            [xs (for/list ([_ (in-range len)])
+                  (g rng size))])
+       (shrink-tree-map
+        (curry map value)
+        (build-shrink-tree xs shrink-list))))))
 
 (module+ test
   (tc "list"
@@ -267,23 +260,23 @@
 
   (tc "shrinking list"
     (check-values ('(3 19 12 10 16 12)
-                   '(((3 19 12 10 14 12)
-                      (3 19 12 10 13 12)
-                      (3 19 12 5 13 12)
-                      (3 12 5 13 12)
-                      (3 12 5 13 0)
-                      (3 12 5 10 0)
-                      (3 0 5 10 0)
-                      (3 0 3 10 0))
-                     ((3 19 10 16 12)
-                      (3 15 10 16 12)
-                      (3 15 10 12 12)
-                      (3 15 10 12 9)
-                      (3 15 5 12 9)
-                      (3 15 5 0 9)
-                      (3 15 5 0 0)
-                      (3 15 4 0 0))))
-      (shrink (gen:list gen:natural) 20 2 8))))
+                   '(((3 19 12 10 16 12)
+                      (3 19 12 10 16 12)
+                      (3 19 12 10 16 12)
+                      (3 12 10 16 12)
+                      (3 12 10 16 12)
+                      (3 12 10 16)
+                      (3 12 10 16)
+                      (3 12 10 16))
+                     ((3 12 10 16 12)
+                      (3 12 10 16 12)
+                      (3 12 10 16 12)
+                      (3 10 16 12)
+                      (3 10 16 12)
+                      (2 10 16 12)
+                      (10 16 12)
+                      (10 16 12))))
+      (sample-shrink (gen:list gen:natural) 20 2 8))))
 
 (define gen:vector
   (make-keyword-procedure
