@@ -103,7 +103,7 @@
          (let loop ([st st]
                     [depth depth])
            (if (zero? depth)
-               '()
+               '(...)
                (match-let ([(shrink-tree val shrinks) st])
                  (let ([shrinks (force shrinks)])
                    (if (null? shrinks)
@@ -159,10 +159,11 @@
   (-> gen? (-> any/c gen?) gen?)
   (gen
    (lambda (rng size)
-     (let ([g-st (g rng size)])
+     (let ([g-st (g rng size)]
+           [rng-state (pseudo-random-generator->vector rng)])
        (shrink-tree-join
         (shrink-tree-map
-         (λ (val) ((h val) rng size))
+         (λ (val) ((h val) (vector->pseudo-random-generator rng-state) size))
          g-st))))))
 
 #;(define/contract (gen:filter g p [max-attempts 1000])

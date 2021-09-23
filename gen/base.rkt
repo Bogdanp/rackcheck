@@ -81,13 +81,13 @@
       (sample-shrink gen:natural))
 
     (check-values (396 '((393 387 291 273 271 267 263 0)
-                         (198 149 148 130 98 49 25 13)
-                         (372 361 350 348 347 337 327 322)
+                         (198 149 148 130 98 49 25 13 ...)
+                         (372 361 350 348 347 337 327 322 ...)
                          (384 0)))
       (sample-shrink gen:natural 500))
 
     (check-values (74 '((0)
-                        (73 69 52 51 39 35 33 29)
+                        (73 69 52 51 39 35 33 29 ...)
                         (56 28 0)
                         (65 64 56 0)))
       (sample-shrink gen:natural 300))))
@@ -109,9 +109,9 @@
       (sample-shrink (gen:integer-in 0 20)))
 
     (check-values (-28 '((-200)
-                         (-114 -116 -117 -137 -140 -155 -156 -167)
+                         (-114 -116 -117 -137 -140 -155 -156 -167 ...)
                          (-30 -32 -33 -43 -200)
-                         (-38 -78 -93 -146 -149 -150 -175 -187)))
+                         (-38 -78 -93 -146 -149 -150 -175 -187 ...)))
       (sample-shrink (gen:integer-in -200 20)))))
 
 (define gen:real
@@ -183,34 +183,36 @@
    gen:char-letter
    gen:char-digit))
 
-(define/contract (gen:tuple g . gs)
+(define/contract (gen:tuple . gs)
   (-> gen? gen? ... gen?)
-  (if (null? gs)
-      (gen:map g (lambda (x) (list x)))
-      (gen:bind (apply gen:tuple gs)
-                (lambda (xs) (gen:map g (lambda (x) (cons x xs)))))))
+  (gen
+   (lambda (rng size)
+     (let ([xs (map (lambda (g) (g rng size)) gs)])
+       (shrink-tree-map
+        (curry map value)
+        (build-shrink-tree xs shrink-one))))))
 
 (module+ test
   (tc "tuple"
     (check-equal? (sample (gen:tuple gen:natural gen:char-digit) 4)
-                  '((0 #\2)
-                    (1 #\9)
-                    (3 #\4)
-                    (7 #\6))))
+                  '((0 #\1) (1 #\5) (2 #\7) (6 #\7))))
 
   (tc "shrinking tuple"
-    (check-values ('(16 |195476|)
-                   '(((3 |195476|)
-                      (11 |95476|)
-                      (18 |95476|)
-                      (2 |55476|)
-                      (17 |55476|)
-                      (10 |5547|)
-                      (18 |5547|)
-                      (9 |4547|))
-                     ((12 |195476|)
-                      (9 |195476|)
-                      (0 |195476|))))
+    (check-values ('(6 |954|)
+                   '(((6 |904|)
+                      (6 |900|)
+                      (5 |900|)
+                      (4 |900|)
+                      (4 |800|)
+                      (4 |00|)
+                      (0 |00|)
+                      (0 |0|)
+                      ...)
+                     ((6 |95|)
+                      (6 |93|)
+                      (6 ||)
+                      (3 ||)
+                      (0 ||))))
       (sample-shrink (gen:tuple gen:natural (gen:symbol gen:char-digit)) 20 2 8))))
 
 (define (shrink-one xs)
@@ -220,7 +222,7 @@
      (append (for/list ([shrunk-x (shrink x)])
                (cons shrunk-x xs))
              (for/list ([shrunk-xs (shrink-one xs)])
-               (cons x xs)))]))
+               (cons x shrunk-xs)))]))
 
 (define (removes k n xs)
   (cond
@@ -260,22 +262,22 @@
 
   (tc "shrinking list"
     (check-values ('(3 19 12 10 16 12)
-                   '(((3 19 12 10 16 12)
-                      (3 19 12 10 16 12)
-                      (3 19 12 10 16 12)
-                      (3 12 10 16 12)
-                      (3 12 10 16 12)
-                      (3 12 10 16)
-                      (3 12 10 16)
-                      (3 12 10 16))
+                   '(((3 19 12 10 12 12)
+                      (3 19 12 10 6 12)
+                      (3 19 12 8 6 12)
+                      (8 6 12)
+                      (8 6 6)
+                      (8 6 3)
+                      (8 6 0)
+                      (8 3 0)
+                      ...)
                      ((3 12 10 16 12)
-                      (3 12 10 16 12)
-                      (3 12 10 16 12)
-                      (3 10 16 12)
-                      (3 10 16 12)
-                      (2 10 16 12)
-                      (10 16 12)
-                      (10 16 12))))
+                      (3 0 10 16 12)
+                      (0 0 10 16 12)
+                      (0 0 10 16)
+                      (0 0 10)
+                      (0 10)
+                      ())))
       (sample-shrink (gen:list gen:natural) 20 2 8))))
 
 (define gen:vector
@@ -362,7 +364,7 @@
                               (5 . ,gen:char-letter)
                               (2 . ,(gen:string gen:char-letter))))
              10)
-     '(0 "u" #\R 6 #\g "uoXa" 8 #\e 10 5))))
+     '(0 1 "uU" #\u 13 #\U #\R #\G #\q 51))))
 
 ;; Local Variables:
 ;; eval: (put 'check-values 'racket-indent-function #'defun)
