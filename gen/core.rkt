@@ -2,6 +2,7 @@
 
 (require racket/contract
          racket/function
+         racket/list
          racket/match
          racket/promise
          racket/random)
@@ -27,7 +28,7 @@
  gen:const
  gen:map
  gen:bind
- ;gen:filter
+ gen:filter
  gen:choice
  gen:sized
  gen:resize
@@ -166,7 +167,14 @@
          (λ (val) ((h val) (vector->pseudo-random-generator rng-state) size))
          g-st))))))
 
-#;(define/contract (gen:filter g p [max-attempts 1000])
+(define (shrink-tree-filter p st)
+  (if (p (value st))
+      (shrink-tree
+       (value st)
+       (lazy (filter-map (curry shrink-tree-filter p) (shrink st))))
+      #f))
+
+(define/contract (gen:filter g p [max-attempts 1000])
   (->* (gen? (-> any/c boolean?))
        ((or/c exact-positive-integer? +inf.0))
        gen?)
@@ -174,16 +182,14 @@
    (lambda (rng size)
      (let search ([attempts 0]
                   [size size])
-       (define s (stream-filter p (g rng size)))
-       (cond
-         [(not (stream-empty? s)) s]
-
-         [(= attempts max-attempts)
-          (raise (exn:fail:gen:exhausted (format "exhausted after ~a attempts" attempts)
-                                         (current-continuation-marks)))]
-
-         [else
-          (search (add1 attempts) (add1 size))])))))
+       (let ([st? (shrink-tree-filter p (g rng size))])
+         (cond
+           [st? st?]
+           [(= attempts max-attempts)
+            (raise (exn:fail:gen:exhausted (format "exhausted after ~a attempts" attempts)
+                                           (current-continuation-marks)))]
+           [else
+            (search (add1 attempts) (add1 size))]))))))
 
 (define/contract (gen:choice . gs)
   (-> gen? gen? ... gen?)
@@ -236,12 +242,12 @@
                         1)
                 '(2))
 
-  #;(check-equal? (sample (gen:filter (gen:const 1)
+  (check-equal? (sample (gen:filter (gen:const 1)
                                     number?)
                         1)
                 '(1))
 
-  #;(check-exn
+  (check-exn
    exn:fail:gen?
    (lambda ()
      (sample (gen:filter (gen:const 1)
