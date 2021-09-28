@@ -24,6 +24,7 @@
  gen:char-alphanumeric
  gen:tuple
  gen:list
+ gen:exact-list
  gen:vector
  gen:bytes
  gen:string
@@ -251,6 +252,16 @@
        (shrink-tree-map
         (curry map value)
         (build-shrink-tree xs shrink-list))))))
+
+(define/contract (gen:exact-list g len)
+  (-> gen? exact-nonnegative-integer? gen?)
+  (gen
+   (lambda (rng size)
+     (let ([xs (for/list ([_ (in-range len)])
+                 (g rng size))])
+       (shrink-tree-map
+        (curry map value)
+        (build-shrink-tree xs shrink-one))))))
 
 (module+ test
   (tc "list"

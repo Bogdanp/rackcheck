@@ -33,7 +33,8 @@
  gen:sized
  gen:resize
  gen:scale
- gen:no-shrink)
+ gen:no-shrink
+ gen:with-shrink)
 
 (struct exn:fail:gen exn:fail ())
 (struct exn:fail:gen:exhausted exn:fail:gen ())
@@ -219,7 +220,13 @@
   (-> gen? gen?)
   (gen
    (lambda (rng size)
-     (shrink-tree (shrink-tree-val (g rng size)) (lazy '())))))
+     (shrink-tree (value (g rng size)) (lazy '())))))
+
+(define/contract (gen:with-shrink g shr)
+  (-> gen? (-> any/c (listof any/c)) gen?)
+  (gen
+   (lambda (rng size)
+     (build-shrink-tree (value (g rng size)) shr))))
 
 (module+ private
   (provide gen shrink-tree))
