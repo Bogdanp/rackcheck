@@ -12,6 +12,12 @@
 (provide
  (all-from-out "core.rkt")
 
+ halves
+ shrink-integer
+ shrink-one
+ removes
+ shrink-list
+
  gen:natural
  gen:integer-in
  gen:real
@@ -34,13 +40,15 @@
  ;gen:hasheqv
  gen:frequency)
 
-(define (halves n)
+(define/contract (halves n)
+  (-> exact-integer? (listof exact-integer?))
   (let loop ([n (quotient n 2)])
     (if (zero? n)
         '()
         (cons n (loop (quotient n 2))))))
 
-(define (shrink-integer n)
+(define/contract (shrink-integer n)
+  (-> exact-integer? (listof exact-integer?))
   (if (zero? n)
       '()
       (append (if (negative? n) (list (abs n)) '())
@@ -191,7 +199,7 @@
      (let ([xs (map (lambda (g) (g rng size)) gs)])
        (shrink-tree-map
         (curry map value)
-        (build-shrink-tree xs shrink-one))))))
+        (build-shrink-tree xs (curry shrink-one shrink)))))))
 
 (module+ test
   (tc "tuple"
@@ -216,16 +224,20 @@
                       (0 ||))))
       (sample-shrink (gen:tuple gen:natural (gen:symbol gen:char-digit)) 20 2 8))))
 
-(define (shrink-one xs)
+(define/contract (shrink-one shr xs)
+  (-> (-> any/c (listof any/c)) (listof any/c)
+      (listof (listof any/c)))
   (match xs
     ['() '()]
     [(cons x xs)
      (append (for/list ([shrunk-x (shrink x)])
                (cons shrunk-x xs))
-             (for/list ([shrunk-xs (shrink-one xs)])
+             (for/list ([shrunk-xs (shrink-one shr xs)])
                (cons x shrunk-xs)))]))
 
-(define (removes k n xs)
+(define/contract (removes k n xs)
+  (-> exact-nonnegative-integer? exact-nonnegative-integer? (listof any/c)
+      (listof (listof any/c)))
   (cond
     [(> k n) '()]
     [(= k n) '(())]
@@ -233,14 +245,16 @@
             (cons xs-r (for/list ([r-xs (removes k (- n k) xs-r)])
                          (append xs-l r-xs))))]))
 
-(define (shrink-list xs)
+(define/contract (shrink-list shr xs)
+  (-> (-> any/c (listof any/c)) (listof any/c)
+      (listof (listof any/c)))
   (let ([n (length xs)])
     (if (= n 0)
         '()
         (append
          (append* (for/list ([k (cons n (halves n))])
                     (removes k n xs)))
-         (shrink-one xs)))))
+         (shrink-one shr xs)))))
 
 (define/contract (gen:list g #:max-length [max-len 128])
   (->* (gen?) (#:max-length exact-nonnegative-integer?) gen?)
@@ -251,7 +265,7 @@
                   (g rng size))])
        (shrink-tree-map
         (curry map value)
-        (build-shrink-tree xs shrink-list))))))
+        (build-shrink-tree xs (curry shrink-list shrink)))))))
 
 (define/contract (gen:exact-list g len)
   (-> gen? exact-nonnegative-integer? gen?)
@@ -261,7 +275,7 @@
                  (g rng size))])
        (shrink-tree-map
         (curry map value)
-        (build-shrink-tree xs shrink-one))))))
+        (build-shrink-tree xs (curry shrink-one shrink)))))))
 
 (module+ test
   (tc "list"
