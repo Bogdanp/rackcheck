@@ -16,6 +16,7 @@
  shrink-integer
  shrink-one
  removes
+ list-cuts
  shrink-list
 
  gen:natural
@@ -42,17 +43,16 @@
 
 (define/contract (halves n)
   (-> exact-integer? (listof exact-integer?))
-  (let loop ([n (quotient n 2)])
-    (if (zero? n)
-        '()
-        (cons n (loop (quotient n 2))))))
+  (if (zero? n)
+      '()
+      (cons n (halves (quotient n 2)))))
 
 (define/contract (shrink-integer n)
   (-> exact-integer? (listof exact-integer?))
   (if (zero? n)
       '()
       (append (if (negative? n) (list (abs n)) '())
-              (cons 0 (map (curry - n) (halves n))))))
+              (map (curry - n) (halves n)))))
 
 (define gen:natural
   (gen
@@ -245,16 +245,21 @@
             (cons xs-r (for/list ([r-xs (removes k (- n k) xs-r)])
                          (append xs-l r-xs))))]))
 
+(define/contract (list-cuts l)
+  (-> (listof any/c) (listof (listof any/c)))
+  (let ([n (length l)])
+    (append*
+     (for/list ([k (halves n)])
+       (removes k n l)))))
+
 (define/contract (shrink-list shr xs)
   (-> (-> any/c (listof any/c)) (listof any/c)
       (listof (listof any/c)))
-  (let ([n (length xs)])
-    (if (= n 0)
-        '()
-        (append
-         (append* (for/list ([k (cons n (halves n))])
-                    (removes k n xs)))
-         (shrink-one shr xs)))))
+  (if (= (length xs) 0)
+      '()
+      (append
+       (list-cuts xs)
+       (shrink-one shr xs))))
 
 (define/contract (gen:list g #:max-length [max-len 128])
   (->* (gen?) (#:max-length exact-nonnegative-integer?) gen?)
