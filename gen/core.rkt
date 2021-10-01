@@ -53,10 +53,10 @@
   (-> any/c (-> any/c (listof any/c)) shrink-tree?)
   (shrink-tree
    val
-   (lazy (map (lambda (v) (build-shrink-tree v shr))
-              (shr val)))))
+   (delay (map (lambda (v) (build-shrink-tree v shr))
+               (shr val)))))
 
-(define/contract (make-shrink-tree val [shrinks (lazy '())])
+(define/contract (make-shrink-tree val [shrinks (delay '())])
   (->* (any/c) ((promise/c (listof any/c))) shrink-tree?)
   (shrink-tree val shrinks))
 
@@ -64,15 +64,15 @@
   (-> (-> any/c any/c) shrink-tree? shrink-tree?)
   (shrink-tree
    (f (value st))
-   (lazy (map (curry shrink-tree-map f)
-              (shrink st)))))
+   (delay (map (curry shrink-tree-map f)
+               (shrink st)))))
 
 (define (shrink-tree-join st)
   (match-let ([(shrink-tree (shrink-tree inner-val inner-shrinks) outer-shrinks) st])
     (shrink-tree
      inner-val
-     (lazy (append (map shrink-tree-join (force outer-shrinks))
-                   (force inner-shrinks))))))
+     (delay (append (map shrink-tree-join (force outer-shrinks))
+                    (force inner-shrinks))))))
 
 (define generator/c
   (-> pseudo-random-generator? exact-nonnegative-integer? shrink-tree?))
@@ -90,10 +90,10 @@
     (shrink-tree-val (g rng (expt s 2)))))
 
 ; it would be pretty neat to have a visual program for exploring shrink trees
-(define/contract (sample-shrink g [size 30] [n 4] [depth 8] [rng (current-pseudo-random-generator)])
+(define/contract (sample-shrink g [size 30] #:samples [n 4] #:max-depth [depth 8] [rng (current-pseudo-random-generator)])
   (->* (gen?) (exact-positive-integer?
-               exact-positive-integer?
-               exact-positive-integer?
+               #:samples exact-positive-integer?
+               #:max-depth exact-positive-integer?
                pseudo-random-generator?)
        (values any/c (listof (listof any/c))))
   (let ([st (g rng size)])
@@ -125,11 +125,11 @@
              (cons (shrink-tree-val (car shrinks))
                    (loop (car shrinks)))))))))
 
-(define/contract (full-shrink g [size 30] [first-n? #f] [max-depth? #f]
+(define/contract (full-shrink g [size 30] #:first-n [first-n? #f] #:max-depth [max-depth? #f]
                               [rng (current-pseudo-random-generator)])
   (->* (gen?) (exact-positive-integer?
-               (or/c false/c exact-positive-integer?)
-               (or/c false/c exact-nonnegative-integer?)
+               #:first-n (or/c false/c exact-positive-integer?)
+               #:max-depth (or/c false/c exact-nonnegative-integer?)
                pseudo-random-generator?)
        (listof any/c))
   (let ([st (g rng size)])
@@ -149,7 +149,7 @@
 (define (gen:const v)
   (gen
    (lambda (_rng _size)
-     (shrink-tree v (lazy '())))))
+     (shrink-tree v (delay '())))))
 
 (define/contract (gen:map g f)
   (-> gen? (-> any/c any/c) gen?)
@@ -172,7 +172,7 @@
   (if (p (value st))
       (shrink-tree
        (value st)
-       (lazy (filter-map (curry shrink-tree-filter p) (shrink st))))
+       (delay (filter-map (curry shrink-tree-filter p) (shrink st))))
       #f))
 
 (define/contract (gen:filter g p [max-attempts 1000])
@@ -211,7 +211,7 @@
      (g rng size))))
 
 (define/contract (gen:scale g f)
-  (-> gen? (-> exact-nonnegative-integer? exact-positive-integer?) gen?)
+  (-> gen? (-> exact-nonnegative-integer? exact-nonnegative-integer?) gen?)
   (gen:sized
    (lambda (size)
      (gen:resize g (f size)))))
@@ -220,7 +220,7 @@
   (-> gen? gen?)
   (gen
    (lambda (rng size)
-     (shrink-tree (value (g rng size)) (lazy '())))))
+     (shrink-tree (value (g rng size)) (delay '())))))
 
 (define/contract (gen:with-shrink g shr)
   (-> gen? (-> any/c (listof any/c)) gen?)

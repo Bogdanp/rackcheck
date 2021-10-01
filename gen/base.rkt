@@ -31,7 +31,7 @@
  gen:char-alphanumeric
  gen:tuple
  gen:list
- gen:exact-list
+ gen:list-len
  gen:vector
  gen:bytes
  gen:string
@@ -222,7 +222,7 @@
                       (6 ||)
                       (3 ||)
                       (0 ||))))
-      (sample-shrink (gen:tuple gen:natural (gen:symbol gen:char-digit)) 20 2 8))))
+      (sample-shrink (gen:tuple gen:natural (gen:symbol gen:char-digit)) 20 #:samples 2 #:max-depth 8))))
 
 (define/contract (shrink-one shr xs)
   (-> (-> any/c (listof any/c)) (listof any/c)
@@ -272,7 +272,7 @@
         (curry map value)
         (build-shrink-tree xs (curry shrink-list shrink)))))))
 
-(define/contract (gen:exact-list g len)
+(define/contract (gen:list-len g len)
   (-> gen? exact-nonnegative-integer? gen?)
   (gen
    (lambda (rng size)
@@ -308,7 +308,7 @@
                       (0 0 10)
                       (0 10)
                       ())))
-      (sample-shrink (gen:list gen:natural) 20 2 8))))
+      (sample-shrink (gen:list gen:natural) 20 #:samples 2 #:max-depth 8))))
 
 (define gen:vector
   (make-keyword-procedure

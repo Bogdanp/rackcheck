@@ -3,7 +3,6 @@
 @(require scribble/example
           (for-label racket/base
                      racket/contract
-                     racket/stream
                      racket/string
                      rackcheck
                      rackunit))
@@ -58,20 +57,21 @@ Don't use them to produce values for your tests.
   Samples @racket[n] values from @racket[g].
 }
 
+@;{
 @defproc[(shrink [g gen?]
                  [size exact-nonnegative-integer?]
                  [rng pseudo-random-generator? (current-pseudo-random-generator)]) (values any/c (listof any/c))]{
 
   Produces a value and all of its shrinks from @racket[g].
 }
+}                                                                                                             
 
 @subsubsection{Core Combinators}
 
-@defthing[generator/c (-> pseudo-random-generator? exact-nonnegative-integer? (stream/c any/c))]{
+@defthing[generator/c (-> pseudo-random-generator? exact-nonnegative-integer? shrink-tree?)]{
   The contract for generator functions.  Generator functions produce a
-  stream of values where the first value is the generated value and
-  the rest of the values are the possible shrinks of that value from
-  the largest to the smallest.
+  lazily evaluated tree containing the different ways that the generated
+  value can be shrunk.
 
   In general, you won't have to write generator functions yourself.
   Instead, you'll use the generators and combinators provided by this
@@ -84,10 +84,9 @@ Don't use them to produce values for your tests.
   @defproc[(gen? [v any/c]) boolean?]
   @defproc[(make-gen [f generator/c]) gen?]
 )]{
-
   @racket[gen?] returns @racket[#t] when @racket[v] is a generator
-  value and @racket[make-gen] creates new generator values from
-  generator functions.
+  value and @racket[make-gen] creates a new generator from a
+  generator function.
 
   Use custom generators sparingly. They're one area where we might
   break backward compatibility if we come up with a better
@@ -110,17 +109,15 @@ Don't use them to produce values for your tests.
 
   Creates a generator that depends on the values produced by @racket[g].
 
-  When shrinking, a new shrink sequence is produced for every
-  application of @racket[f] to all of @racket[g]'s shrinks.
+  When shrinking, the shrinking of the output of @racket[g] is prioritized
+  over the shrinking of the output of @racket[g].
 
   @ex[
   (define gen:list-of-trues
     (gen:bind
      gen:natural
      (lambda (len)
-       (make-gen
-        (lambda (rng size)
-          (stream (make-list len #t)))))))
+       (gen:list-len (gen:const #t) len))))
   ]
 
   @ex[
@@ -128,13 +125,14 @@ Don't use them to produce values for your tests.
   ]
 
   @ex[
-  (shrink gen:list-of-trues 5)
+  (full-shrink gen:list-of-trues 5 #:max-depth 1)
   ]
 }
 
 @defproc[(gen:filter [g gen?]
                      [p (-> any/c boolean?)]
-                     [max-attempts (or/c exact-positive-integer? +inf.0) 1000]) gen?]{
+                     [max-attempts (or/c exact-positive-integer? +inf.0) 1000])
+         gen?]{
 
   Produces a generator that repeatedly generates values using
   @racket[g] until the result of @racket[p] applied to one of those
@@ -173,8 +171,28 @@ Don't use them to produce values for your tests.
   of the passed-in generators.
 }
 
+@defproc[(gen:sized [f (-> exact-nonnegative-integer? gen?)]) gen?]{
+  Creates a generator that uses the generator's @racket[size] argument.
+}
+
+@defproc[(gen:resize [g gen?] [size exact-nonnegative-integer?]) gen?]{
+  Creates a generator that overrides the generator's size with @racket[size].
+}
+
+@defproc[(gen:scale [g gen?]
+                    [f (-> exact-nonnegative-integer?
+                           exact-nonnegative-integer?)])
+         gen?]{
+  Creates a generator that modifies the size by applying @racket[f].
+}
+
 @defproc[(gen:no-shrink [g gen?]) gen?]{
   Creates a generator based on @racket[g] that never shrinks.
+}
+
+@defproc[(gen:with-shrink [g gen?] [shr (-> any/c (listof any/c))]) gen?]{
+  Creates a generator that overrides the default shrinking with recursive
+  applications of @racket[shr] to the generator output.
 }
 
 @defform[(gen:let ([id gen-expr] ...+) body ...+)]{
@@ -192,7 +210,7 @@ Don't use them to produce values for your tests.
   ]
 
   @ex[
-  (shrink gen:list-of-trues-2 5)
+  (full-shrink gen:list-of-trues-2 5 #:max-depth 5)
   ]
 }
 
@@ -208,7 +226,7 @@ Don't use them to produce values for your tests.
   Generates natural numbers.
 
   @ex[(sample gen:natural)]
-  @ex[(shrink gen:natural)]
+  @ex[(full-shrink gen:natural #:max-depth 1)]
 }
 
 @defproc[(gen:integer-in [lo exact-integer?]
@@ -219,7 +237,7 @@ Don't use them to produce values for your tests.
   @racket[lo] is greater than @racket[hi].
 
   @ex[(sample (gen:integer-in 1 255))]
-  @ex[(shrink (gen:integer-in 1 255))]
+  @ex[(full-shrink (gen:integer-in 1 255) #:max-depth 1)]
 }
 
 @defthing[gen:real gen?]{
@@ -228,7 +246,7 @@ Don't use them to produce values for your tests.
   future.
 
   @ex[(sample gen:real)]
-  @ex[(shrink gen:real)]
+  @ex[(full-shrink gen:real)]
 }
 
 @defproc[(gen:one-of [xs (non-empty-listof any/c)]) gen?]{
@@ -237,42 +255,42 @@ Don't use them to produce values for your tests.
 
   @ex[(define gen:letters (gen:one-of '(a b c)))]
   @ex[(sample gen:letters)]
-  @ex[(shrink gen:letters)]
+  @ex[(full-shrink gen:letters #:max-depth 1)]
 }
 
 @defthing[gen:boolean gen?]{
   Generates boolean values.
 
   @ex[(sample gen:boolean)]
-  @ex[(shrink gen:boolean)]
+  @ex[(full-shrink gen:boolean #:max-depth 1)]
 }
 
 @defthing[gen:char gen?]{
   Generates ASCII characters.
 
   @ex[(sample gen:char)]
-  @ex[(shrink gen:char)]
+  @ex[(full-shrink gen:char #:max-depth 1)]
 }
 
 @defthing[gen:char-letter gen?]{
   Generates ASCII letters.
 
   @ex[(sample gen:char-letter)]
-  @ex[(shrink gen:char-letter)]
+  @ex[(full-shrink gen:char-letter #:max-depth 1)]
 }
 
 @defthing[gen:char-digit gen?]{
   Generates ASCII digits.
 
   @ex[(sample gen:char-digit)]
-  @ex[(shrink gen:char-digit)]
+  @ex[(full-shrink gen:char-digit #:max-depth 1)]
 }
 
 @defthing[gen:char-alphanumeric gen?]{
   Generates alphanumeric ASCII characters.
 
   @ex[(sample gen:char-alphanumeric)]
-  @ex[(shrink gen:char-alphanumeric)]
+  @ex[(full-shrink gen:char-alphanumeric #:max-depth 1)]
 }
 
 @defproc[(gen:tuple [g gen?] ...+) gen?]{
@@ -281,18 +299,22 @@ Don't use them to produce values for your tests.
   sequence.
 
   @ex[(sample (gen:tuple gen:natural gen:boolean))]
-  @ex[(shrink (gen:tuple gen:natural gen:boolean))]
+  @ex[(full-shrink (gen:tuple gen:natural gen:boolean) #:max-depth 1)]
 }
 
 @defproc[(gen:list [g gen?]
                    [#:max-length max-len exact-nonnegative-integer? 128]) gen?]{
 
   Creates a generator that produces lists of random lengths where every
-  element is generated using @racket[g].  Shrinks by reducing the size
-  of the list by one element every time.
+  element is generated using @racket[g]. Shrinks by removing elements from the
+  list, then by shrinking individual elements of the list.
 
   @ex[(sample (gen:list gen:natural) 5)]
-  @ex[(shrink (gen:list gen:natural))]
+  @ex[(full-shrink (gen:list gen:natural) 5 #:max-depth 1)]
+}
+
+@defproc[(gen:list-len [g gen?] [len exact-nonnegative-integer?]) gen?]{
+  Like @racket[gen:list], but produces lists of exactly @racket[len] elements.
 }
 
 @defproc[(gen:vector [g gen?]
@@ -301,7 +323,7 @@ Don't use them to produce values for your tests.
   Like @racket[gen:list] but for @racket[vector?]s.
 
   @ex[(sample (gen:vector gen:natural) 5)]
-  @ex[(shrink (gen:vector gen:natural))]
+  @ex[(full-shrink (gen:vector gen:natural) 5 #:max-depth 1)]
 }
 
 @defproc[(gen:bytes [g gen? (gen:integer-in 0 255)]
@@ -312,7 +334,7 @@ Don't use them to produce values for your tests.
   range 0 to 255 inclusive.
 
   @ex[(sample (gen:bytes) 5)]
-  @ex[(shrink (gen:bytes))]
+  @ex[(full-shrink (gen:bytes) 5 #:max-depth 1)]
 }
 
 @defproc[(gen:string [g gen? gen:char]
@@ -323,7 +345,7 @@ Don't use them to produce values for your tests.
   values.
 
   @ex[(sample (gen:string gen:char-letter) 5)]
-  @ex[(shrink (gen:string gen:char-letter))]
+  @ex[(sample-shrink (gen:string gen:char-letter) 5 #:max-depth 1)]
 }
 
 @defproc[(gen:symbol [g gen? gen:char]
@@ -334,9 +356,10 @@ Don't use them to produce values for your tests.
   @racket[char?] values.
 
   @ex[(sample (gen:symbol gen:char-letter) 5)]
-  @ex[(shrink (gen:symbol gen:char-letter))]
+  @ex[(full-shrink (gen:symbol gen:char-letter) 5 #:max-depth 1)]
 }
 
+@;{
 @deftogether[(
   @defproc[(gen:hash    [k any/c] [g gen?] ...+ ...+) gen?]
   @defproc[(gen:hasheq  [k any/c] [g gen?] ...+ ...+) gen?]
@@ -348,7 +371,8 @@ Don't use them to produce values for your tests.
   maps to a value generated from its associated generator.
 
   @ex[(sample (gen:hasheq 'a gen:natural 'b (gen:string gen:char-letter)) 5)]
-  @ex[(shrink (gen:hasheq 'a gen:natural 'b (gen:string gen:char-letter)))]
+  @ex[(full-shrink (gen:hasheq 'a gen:natural 'b (gen:string gen:char-letter)) #:max-depth 1)]
+}
 }
 
 @defproc[(gen:frequency [frequencies (non-empty-listof (cons/c exact-positive-integer? gen?))]) gen?]{
@@ -359,8 +383,9 @@ Don't use them to produce values for your tests.
 
   @ex[(sample (gen:frequency `((5 . ,gen:natural)
                                (2 . ,gen:boolean))))]
-  @ex[(shrink (gen:frequency `((5 . ,gen:natural)
-                               (2 . ,gen:boolean))))]
+  @ex[(full-shrink (gen:frequency `((5 . ,gen:natural)
+                                    (2 . ,gen:boolean)))
+                   #:max-depth 1)]
 }
 
 @subsubsection{Unicode Generators}
