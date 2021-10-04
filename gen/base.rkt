@@ -36,9 +36,9 @@
  gen:bytes
  gen:string
  gen:symbol
- ;gen:hash
- ;gen:hasheq
- ;gen:hasheqv
+ gen:hash
+ gen:hasheq
+ gen:hasheqv
  gen:frequency)
 
 (define/contract (halves n)
@@ -334,42 +334,28 @@
      (gen:map (keyword-apply gen:string kws kw-args args)
               string->symbol))))
 
-#;(define (make-gen:hash who constructor)
+(define (make-gen:hash who constructor)
   (lambda pairs
     (unless (even? (length pairs))
       (raise-argument-error who "an even number of arguments" pairs))
 
-    (gen
-     (lambda (rng size)
-       (define-values (keys streams)
-         (for/fold ([keys    null]
-                    [streams null])
-                   ([(v i) (in-indexed pairs)])
-           (if (even? i)
-               (values (cons v keys) streams)
-               (values keys (cons (v rng size) streams)))))
+    (let-values ([(keys gens)
+                  (for/fold ([keys '()]
+                             [gens '()])
+                            ([(v i) (in-indexed pairs)])
+                    (if (even? i)
+                        (values (cons v keys) gens)
+                        (values keys (cons v gens))))])
+      (gen:map (apply gen:tuple gens)
+               (lambda (tuple)
+                 (constructor (map cons keys tuple)))))))
 
-       (define streams-for-keys
-         (for/list ([k (in-list keys)]
-                    [s (in-list streams)])
-           (for/stream ([v (in-stream s)])
-             (cons k v))))
-
-       (stream-dedupe
-        (for*/stream ([s (in-list streams-for-keys)]
-                      [p (in-stream s)]
-                      [h (sequence-map
-                          (lambda vals
-                            (constructor (append vals (list p))))
-                          (apply in-parallel streams-for-keys))])
-          h))))))
-
-#;(define-syntax-rule (define-gen:hash id f)
+(define-syntax-rule (define-gen:hash id f)
   (define id (make-gen:hash 'id f)))
 
-;(define-gen:hash gen:hash make-immutable-hash)
-;(define-gen:hash gen:hasheq make-immutable-hasheq)
-;(define-gen:hash gen:hasheqv make-immutable-hasheqv)
+(define-gen:hash gen:hash make-immutable-hash)
+(define-gen:hash gen:hasheq make-immutable-hasheq)
+(define-gen:hash gen:hasheqv make-immutable-hasheqv)
 
 (define/contract (gen:frequency freqs)
   (-> (non-empty-listof (cons/c exact-positive-integer? gen?)) gen?)

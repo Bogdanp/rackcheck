@@ -362,7 +362,6 @@ Don't use them to produce values for your tests.
   @ex[(full-shrink (gen:symbol gen:char-letter) 5 #:max-depth 1)]
 }
 
-@;{
 @deftogether[(
   @defproc[(gen:hash    [k any/c] [g gen?] ...+ ...+) gen?]
   @defproc[(gen:hasheq  [k any/c] [g gen?] ...+ ...+) gen?]
@@ -375,7 +374,6 @@ Don't use them to produce values for your tests.
 
   @ex[(sample (gen:hasheq 'a gen:natural 'b (gen:string gen:char-letter)) 5)]
   @ex[(full-shrink (gen:hasheq 'a gen:natural 'b (gen:string gen:char-letter)) #:max-depth 1)]
-}
 }
 
 @defproc[(gen:frequency [frequencies (non-empty-listof (cons/c exact-positive-integer? gen?))]) gen?]{
