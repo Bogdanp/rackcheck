@@ -59,8 +59,8 @@ Don't use them to produce values for your tests.
 
 @defproc[(full-shrink [g gen?]
                       [size exact-nonnegative-integer?]
-                      #:first-n [first-n? (or/c false/c exact-nonnegative-integer?) #f]
-                      #:max-depth [max-depth? (or/c false/c exact-nonnegative-integer?) #f]
+                      [#:first-n first-n? (or/c false/c exact-nonnegative-integer?) #f]
+                      [#:max-depth max-depth? (or/c false/c exact-nonnegative-integer?) #f]
                       [rng pseudo-random-generator? (current-pseudo-random-generator)])
          (listof any/c)]{
 
