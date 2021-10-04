@@ -57,14 +57,17 @@ Don't use them to produce values for your tests.
   Samples @racket[n] values from @racket[g].
 }
 
-@;{
-@defproc[(shrink [g gen?]
-                 [size exact-nonnegative-integer?]
-                 [rng pseudo-random-generator? (current-pseudo-random-generator)]) (values any/c (listof any/c))]{
+@defproc[(full-shrink [g gen?]
+                      [size exact-nonnegative-integer?]
+                      #:first-n [first-n? (or/c false/c exact-nonnegative-integer?) #f]
+                      #:max-depth [max-depth? (or/c false/c exact-nonnegative-integer?) #f]
+                      [rng pseudo-random-generator? (current-pseudo-random-generator)])
+         (listof any/c)]{
 
-  Produces a value and all of its shrinks from @racket[g].
-}
-}                                                                                                             
+ Produces a value from @racket[g] and evaluates it's shrink tree.
+ The evaluation searches the @racket[first-n?] shrinks of each term, up to a
+ depth of @racket[max-depth?], or unbounded if @racket[#f].
+}                                                                                                           
 
 @subsubsection{Core Combinators}
 
