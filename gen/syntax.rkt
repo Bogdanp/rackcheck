@@ -42,7 +42,7 @@
   (reseed)
   (check-equal?
    (sample g 5)
-   '(0 1 6 42 44))
+   '(0 0 8 20 104))
 
   (define gen:variable
     (gen:let ([h gen:char-letter]
@@ -52,7 +52,7 @@
 
   (reseed)
   (check-equal? (sample gen:variable 3)
-                '(e MR q2d)))
+                '(e P uGG9)))
 
 ;; Local Variables:
 ;; eval: (put 'gen:let 'racket-indent-function #'defun)
