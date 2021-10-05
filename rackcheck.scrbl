@@ -96,6 +96,28 @@ Don't use them to produce values for your tests.
   implementation.
 }
 
+@deftogether[(
+  @defproc[(shrink-tree? [v any/c]) boolean?]
+  @defproc[(make-shrink-tree [v any/c] [shrs (promise/c (listof shrink-tree?))]) shrink-tree?]
+)]{
+
+ A shrink-tree is a lazyily evaluated tree containing a value and the ways it
+ can be shrunk. @racket[shrink-tree?] returns @racket[#t] when @racket[v] is a
+ shrink-tree value and @racket[make-shrink-tree] creates a new shrink-tree from
+ a value  @racket[v], and a promise of a list of shrinks @racket[shrs].
+}
+
+@defproc[(build-shrink-tree [v any/c] [shr (-> any/c (listof any/c))]) shrink-tree?]{
+ Creates a shrink-tree by recursively applying the given shrinking function
+ @racket[shr] to @racket[v]. Useful for constructing a shrink-tree from a
+ standard shrinking function. Use @racket[gen:with-shrink] for this
+ functionality without having to create a custom generator.
+}
+
+@defproc[(shrink-tree-map [f (-> any/c any/c)] [st shrink-tree?]) shrink-tree?]{
+ Maps @racket[f] onto all the values contained within @racket[st].
+}
+
 @defproc[(gen:const [v any/c]) gen?]{
   Creates a generator that always returns @racket[v].
 }
@@ -348,7 +370,7 @@ Don't use them to produce values for your tests.
   values.
 
   @ex[(sample (gen:string gen:char-letter) 5)]
-  @ex[(sample-shrink (gen:string gen:char-letter) 5 #:max-depth 1)]
+  @ex[(full-shrink (gen:string gen:char-letter) 5 #:max-depth 1)]
 }
 
 @defproc[(gen:symbol [g gen? gen:char]
