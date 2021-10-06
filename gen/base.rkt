@@ -230,7 +230,7 @@
   (match xs
     ['() '()]
     [(cons x xs)
-     (append (for/list ([shrunk-x (shrink x)])
+     (append (for/list ([shrunk-x (shr x)])
                (cons shrunk-x xs))
              (for/list ([shrunk-xs (shrink-one shr xs)])
                (cons x shrunk-xs)))]))
