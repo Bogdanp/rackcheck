@@ -53,10 +53,10 @@
   (-> any/c (-> any/c (listof any/c)) shrink-tree?)
   (shrink-tree
    val
-   (delay (map (lambda (v) (build-shrink-tree v shr))
-               (shr val)))))
+   (lazy (map (lambda (v) (build-shrink-tree v shr))
+              (shr val)))))
 
-(define/contract (make-shrink-tree val [shrinks (delay '())])
+(define/contract (make-shrink-tree val [shrinks (lazy '())])
   (->* (any/c) ((promise/c (listof any/c))) shrink-tree?)
   (shrink-tree val shrinks))
 
@@ -64,15 +64,15 @@
   (-> (-> any/c any/c) shrink-tree? shrink-tree?)
   (shrink-tree
    (f (value st))
-   (delay (map (curry shrink-tree-map f)
-               (shrink st)))))
+   (lazy (map (curry shrink-tree-map f)
+              (shrink st)))))
 
 (define (shrink-tree-join st)
   (match-let ([(shrink-tree (shrink-tree inner-val inner-shrinks) outer-shrinks) st])
     (shrink-tree
      inner-val
-     (delay (append (map shrink-tree-join (force outer-shrinks))
-                    (force inner-shrinks))))))
+     (lazy (append (map shrink-tree-join (force outer-shrinks))
+                   (force inner-shrinks))))))
 
 (define generator/c
   (-> pseudo-random-generator? exact-nonnegative-integer? shrink-tree?))
@@ -149,7 +149,7 @@
 (define (gen:const v)
   (gen
    (lambda (_rng _size)
-     (shrink-tree v (delay '())))))
+     (shrink-tree v (lazy '())))))
 
 (define/contract (gen:map g f)
   (-> gen? (-> any/c any/c) gen?)
@@ -172,7 +172,7 @@
   (if (p (value st))
       (shrink-tree
        (value st)
-       (delay (filter-map (curry shrink-tree-filter p) (shrink st))))
+       (lazy (filter-map (curry shrink-tree-filter p) (shrink st))))
       #f))
 
 (define/contract (gen:filter g p [max-attempts 1000])
@@ -220,7 +220,7 @@
   (-> gen? gen?)
   (gen
    (lambda (rng size)
-     (shrink-tree (value (g rng size)) (delay '())))))
+     (shrink-tree (value (g rng size)) (lazy '())))))
 
 (define/contract (gen:with-shrink g shr)
   (-> gen? (-> any/c (listof any/c)) gen?)
