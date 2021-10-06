@@ -124,11 +124,14 @@
                            (set! exn? the-exn)))])
         (parameterize ([current-pseudo-random-generator caller-rng])
           (apply f args))))
-    
-    (define (descend-shrinks st)
-      (parameterize ([current-labels #f])
-        (and (not (pass? (value st)))
-             (or (ormap descend-shrinks (shrink st)) (value st)))))
+
+    (define (descend-shrinks sts acc)
+      (match sts
+        ['() acc]
+        [(cons st rest-sts)
+         (if (pass? (value st))
+             (descend-shrinks rest-sts acc)
+             (descend-shrinks (shrink st) (value st)))]))
 
     (random-seed seed)
     (let loop ([test 0])
@@ -144,7 +147,8 @@
                 [val (value st)])
            (if (pass? val)
                (loop (add1 test))
-               (let ([shrunk? (ormap descend-shrinks (shrink st))])
+               (let ([shrunk? (parameterize ([current-labels #f])
+                                (descend-shrinks (shrink st) #f))])
                  (make-result c p (current-labels) (add1 test) 'falsified val shrunk? exn?))))]))))
 
 (module+ private
