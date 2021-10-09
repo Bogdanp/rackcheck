@@ -88,6 +88,10 @@ Don't use them to produce values for your tests.
   @racket[gen?] returns @racket[#t] when @racket[v] is a generator
   value and @racket[make-gen] creates new generator values from
   generator functions.
+
+  Use custom generators sparingly. They're one area where we might
+  break backward compatibility if we come up with a better
+  implementation.
 }
 
 @defproc[(gen:const [v any/c]) gen?]{
