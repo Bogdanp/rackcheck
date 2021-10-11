@@ -165,7 +165,7 @@
            [rng-state (pseudo-random-generator->vector rng)])
        (shrink-tree-join
         (shrink-tree-map
-         (λ (val) ((h val) (vector->pseudo-random-generator rng-state) size))
+         (λ (val) ((h val) rng #;(vector->pseudo-random-generator rng-state) size))
          g-st))))))
 
 (define (shrink-tree-filter p st)

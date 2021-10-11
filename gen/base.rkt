@@ -30,6 +30,7 @@
  gen:char-digit
  gen:char-alphanumeric
  gen:tuple
+ gen:tuple*
  gen:list
  gen:list-len
  gen:vector
@@ -193,13 +194,17 @@
    gen:char-digit))
 
 (define/contract (gen:tuple . gs)
-  (-> gen? gen? ... gen?)
+  (-> gen? ... gen?)
   (gen
    (lambda (rng size)
      (let ([xs (map (lambda (g) (g rng size)) gs)])
        (shrink-tree-map
         (curry map value)
         (build-shrink-tree xs (curry shrink-one shrink)))))))
+
+(define/contract (gen:tuple* gs)
+  (-> (listof gen?) gen?)
+  (apply gen:tuple gs))
 
 (module+ test
   (tc "tuple"
