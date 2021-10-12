@@ -98,16 +98,16 @@ Don't use them to produce values for your tests.
 
 @deftogether[(
   @defproc[(shrink-tree? [v any/c]) boolean?]
-  @defproc[(make-shrink-tree [v any/c] [shrs (promise/c (listof shrink-tree?))]) shrink-tree?]
+  @defproc[(make-shrink-tree [v any/c] [shrs (stream/c shrink-tree?)]) shrink-tree?]
 )]{
 
  A shrink-tree is a lazyily evaluated tree containing a value and the ways it
  can be shrunk. @racket[shrink-tree?] returns @racket[#t] when @racket[v] is a
  shrink-tree value and @racket[make-shrink-tree] creates a new shrink-tree from
- a value  @racket[v], and a promise of a list of shrinks @racket[shrs].
+ a value  @racket[v], and a stream of shrink-trees @racket[shrs].
 }
 
-@defproc[(build-shrink-tree [v any/c] [shr (-> any/c (listof any/c))]) shrink-tree?]{
+@defproc[(build-shrink-tree [v any/c] [shr (-> any/c (stream/c any/c))]) shrink-tree?]{
  Creates a shrink-tree by recursively applying the given shrinking function
  @racket[shr] to @racket[v]. Useful for constructing a shrink-tree from a
  standard shrinking function. Use @racket[gen:with-shrink] for this
@@ -215,7 +215,7 @@ Don't use them to produce values for your tests.
   Creates a generator based on @racket[g] that never shrinks.
 }
 
-@defproc[(gen:with-shrink [g gen?] [shr (-> any/c (listof any/c))]) gen?]{
+@defproc[(gen:with-shrink [g gen?] [shr (-> any/c (stream/c any/c))]) gen?]{
   Creates a generator that overrides the default shrinking with recursive
   applications of @racket[shr] to the generator output.
 }
@@ -318,13 +318,17 @@ Don't use them to produce values for your tests.
   @ex[(full-shrink gen:char-alphanumeric #:max-depth 1)]
 }
 
-@defproc[(gen:tuple [g gen?] ...+) gen?]{
+@defproc[(gen:tuple [g gen?] ...) gen?]{
   Creates a generator that produces heterogeneous lists where the
   elements are created by generating values from each @racket[g] in
   sequence.
 
   @ex[(sample (gen:tuple gen:natural gen:boolean))]
   @ex[(full-shrink (gen:tuple gen:natural gen:boolean) #:max-depth 1)]
+}
+
+@defproc[(gen:tuple* [gs (listof gen?)]) gen?]{
+ Like @racket[gen:tuple] but it takes the generators from the provided list of generators.
 }
 
 @defproc[(gen:list [g gen?]
@@ -398,11 +402,12 @@ Don't use them to produce values for your tests.
   @ex[(full-shrink (gen:hasheq 'a gen:natural 'b (gen:string gen:char-letter)) #:max-depth 1)]
 }
 
-@defproc[(gen:frequency [frequencies (non-empty-listof (cons/c exact-positive-integer? gen?))]) gen?]{
+@defproc[(gen:frequency [frequencies (non-empty-listof (cons/c exact-nonnegative-integer? gen?))]) gen?]{
 
   Creates a generator that generates values using a generator that is
   randomly picked from @racket[frequencies].  Generators with a higher
-  weight will get picked more often.
+  weight will get picked more often. The sum of the @racket[car]s of the
+  frequencies must be greater than zero.
 
   @ex[(sample (gen:frequency `((5 . ,gen:natural)
                                (2 . ,gen:boolean))))]
@@ -441,7 +446,8 @@ Don't use them to produce values for your tests.
   Returns @racket[#t] when @racket[v] is a property.
 }
 
-@defform[(property [#:name name symbol? 'unnamed] ([id gen-expr] ...) body ...+)]{
+@defform*[((property name ([id gen-expr] ...) body ...+)
+           (property [#:name name symbol? 'unnamed] ([id gen-expr] ...) body ...+))]{
   Declares a property where the inputs are one or more generators.
 
   @ex[

@@ -6,6 +6,7 @@
          racket/match
          racket/promise
          racket/random
+         racket/stream
          "gen/syntax.rkt"
          "gen/core.rkt"
          (submod "gen/core.rkt" private))
@@ -38,7 +39,7 @@
   (syntax-parse stx
     [(_ name:id binds body ...+)
      #'(define name
-         (property #:name 'name binds body ...))]))
+         (property name binds body ...))]))
 
 (module+ test
   (require "gen/base.rkt")
@@ -126,12 +127,13 @@
           (apply f args))))
 
     (define (descend-shrinks sts acc)
-      (match sts
-        ['() acc]
-        [(cons st rest-sts)
-         (if (pass? (value st))
-             (descend-shrinks rest-sts acc)
-             (descend-shrinks (shrink st) (value st)))]))
+      (cond
+        [(stream-empty? sts) acc]
+        [(pass? (value (stream-first sts)))
+         (descend-shrinks (stream-rest sts) acc)]
+        [else
+         (descend-shrinks (shrink (stream-first sts))
+                          (value (stream-first sts)))]))
 
     (random-seed seed)
     (let loop ([test 0])
