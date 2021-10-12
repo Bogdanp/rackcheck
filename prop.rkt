@@ -24,10 +24,10 @@
 
 (define-syntax (property stx)
   (syntax-parse stx
-    [(_ (~optional (~seq #:name name:expr))
+    [(_ (~optional (~or name-id:id (~seq #:name name-ex:expr)))
         ([id:id g:expr] ...)
         body ...+)
-     #'(prop (~? name 'unnamed)
+     #'(prop (~? 'name-id (~? name-ex 'unnamed))
              (list 'id ...)
              (gen:let ([id g] ...)
                (list id ...))
