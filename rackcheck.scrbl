@@ -464,7 +464,7 @@ Don't use them to produce values for your tests.
           ([id gen-expr] ...)
           body ...+)]{
 
-  A shorthand for @racket[(define name (property ...))].
+  A shorthand for @racket[(define name (property name ([id gen-expr] ...) body ...+))].
 }
 
 @defform[(check-property maybe-config prop-expr)
