@@ -84,11 +84,17 @@
   (cond
     [(zero? n) empty-stream]
     [(< n 0)
-     (for/stream ([v (in-stream (halves (abs n)))])
-       (max (min (+ n v) hi) lo))]
+     (for*/stream ([v (in-stream (halves (abs n)))]
+                   [s (in-value (+ n v))]
+                   #:unless (< s lo)
+                   #:unless (> s hi))
+       s)]
     [else
-     (for/stream ([v (in-stream (halves n))])
-       (max (min (- n v) hi) lo))]))
+     (for*/stream ([v (in-stream (halves n))]
+                   [s (in-value (- n v))]
+                   #:unless (< s lo)
+                   #:unless (> s hi))
+       s)]))
 
 (module+ test
   (tc "integer-in"
@@ -221,9 +227,6 @@
      '((1 |9|)
        ((0 |9|) ...)
        ((1 ||)  ...)
-       ((1 |0|) ...)
-       ((1 |0|) ...)
-       ((1 |0|) ...)
        ((1 |2|) ...)
        ((1 |6|) ...)
        ((1 |8|) ...)))))
