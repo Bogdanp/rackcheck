@@ -74,9 +74,21 @@
   (->i ([lo exact-integer?]
         [hi (lo) (>=/c lo)])
        [result gen?])
-  (gen:map
-   (gen:resize gen:natural (- hi lo))
-   (λ (nat) (+ lo nat))))
+  (gen:with-shrink
+   (gen:map
+    (gen:resize gen:natural (- hi lo))
+    (λ (nat) (+ lo nat)))
+   (make-shrink-integer-in lo hi)))
+
+(define ((make-shrink-integer-in lo hi) n)
+  (cond
+    [(zero? n) empty-stream]
+    [(< n 0)
+     (for/stream ([v (in-stream (halves (abs n)))])
+       (max (min (+ n v) hi) lo))]
+    [else
+     (for/stream ([v (in-stream (halves n))])
+       (max (min (- n v) hi) lo))]))
 
 (module+ test
   (tc "integer-in"
@@ -85,7 +97,14 @@
 
   (tc "shrinking integer-in"
     (check-shrinks          (gen:integer-in 0 20)    '(6 (0) (3 ...) (5 ...)))
-    (check-shrinks/sized 30 (gen:integer-in -200 20) '(-161 (-200) (-180 ...) (-170 ...) (-165 ...) (-163 ...) (-162 ...)))))
+    (check-shrinks/sized 30 (gen:integer-in -200 20) '(-161 (0) (-81 ...) (-121 ...) (-141 ...) (-151 ...) (-156 ...) (-159 ...) (-160 ...))))
+
+  (tc "shrink-integer-in shrinks numbers away from 0"
+    (check-equal? (stream->list ((make-shrink-integer-in -10 10) 0)) null)
+    (check-equal? (stream->list ((make-shrink-integer-in -10 10) -5)) '(0 -3 -4))
+    (check-equal? (stream->list ((make-shrink-integer-in -10 10) -10)) '(0 -5 -8 -9))
+    (check-equal? (stream->list ((make-shrink-integer-in -10 10) 5)) '(0 3 4))
+    (check-equal? (stream->list ((make-shrink-integer-in -10 10) 10)) '(0 5 8 9))))
 
 (define gen:real
   (gen
@@ -203,8 +222,10 @@
        ((0 |9|) ...)
        ((1 ||)  ...)
        ((1 |0|) ...)
-       ((1 |5|) ...)
-       ((1 |7|) ...)
+       ((1 |0|) ...)
+       ((1 |0|) ...)
+       ((1 |2|) ...)
+       ((1 |6|) ...)
        ((1 |8|) ...)))))
 
 (define/contract (gen:list g #:max-length [max-len 128])
@@ -333,12 +354,8 @@
 (define (shrink-integer n)
   (if (zero? n)
       empty-stream
-      (stream-append
-       (if (negative? n)
-           (stream (abs n))
-           empty-stream)
-       (for/stream ([v (in-stream (halves n))])
-         (- n v)))))
+      (for/stream ([v (in-stream (halves n))])
+        (- n v))))
 
 (define (shrink-list trees)
   (define (removes k n xs)

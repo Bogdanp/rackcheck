@@ -235,6 +235,7 @@ Don't use them to produce values for your tests.
   @ex[
     (sample (gen:integer-in 1 255))
     (shrink (gen:integer-in 1 255) 5)
+    (shrink (gen:integer-in -99 0) 5)
   ]
 }
 

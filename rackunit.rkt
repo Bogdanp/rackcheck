@@ -61,23 +61,24 @@
 
     [(passed)
      (define labels (sort (hash->list (result-labels res)) > #:key cdr))
+     (define num-labels (length labels))
      (displayln (format "  ✓ property ~a passed ~a tests." (prop-name p) (result-tests-run res)))
      (unless (null? labels)
        (displayln "  Labels:")
-       (for ([(pair i) (in-indexed labels)])
-         (define l (car pair))
-         (define p (* 100 (/ (cdr pair) (result-tests-run res))))
+       (for ([(pair idx) (in-indexed labels)])
+         (define lbl (car pair))
+         (define pct (* 100 (/ (cdr pair) (result-tests-run res))))
          (displayln (~a "  "
-                        (if (= i (sub1 (length labels)))
+                        (if (= idx (sub1 num-labels))
                             "└"
                             "├")
                         " "
                         (~r #:min-width 5
                             #:precision '(= 2)
                             #:pad-string " "
-                            p)
+                            pct)
                         "% "
-                        l))))]))
+                        lbl))))]))
 
 (define-syntax (check-property* stx)
   (syntax-parse stx
