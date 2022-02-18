@@ -3,6 +3,7 @@
 @(require scribble/example
           (for-label racket/base
                      racket/contract
+                     racket/function
                      racket/stream
                      racket/string
                      rackcheck
@@ -483,6 +484,18 @@ Don't use them to produce values for your tests.
     (check-property
      (property ([xs (gen:list gen:natural)])
        (check-equal? (reverse xs) xs)))
+  ]
+}
+
+@defproc[(property-name [property any/c]) any/c?]{
+  Returns name of the @racket[property].
+
+  @ex[
+    (define-property prop-list-map-identity
+     ([xs (gen:list gen:natural)])
+     (check-equal? (map identity xs) xs))
+
+    (property-name prop-list-map-identity)
   ]
 }
 
