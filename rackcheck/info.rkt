@@ -3,7 +3,8 @@
 (define version "2.0.1")
 (define collection "rackcheck")
 (define deps '("base"
-               "rackunit-lib"))
+               "rackunit-lib"
+               "rackcheck-lib"))
 (define build-deps '("racket-doc"
                      "rackunit-doc"
                      "rackunit-lib"
