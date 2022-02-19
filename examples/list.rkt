@@ -1,8 +1,7 @@
 #lang racket/base
 
 (module+ test
-  (require racket/function
-           rackcheck
+  (require rackcheck
            rackunit)
 
   (define-property prop-list-reverse
@@ -11,7 +10,7 @@
 
   (define-property prop-list-map-identity
     ([xs (gen:list gen:natural)])
-    (check-equal? (map identity xs) xs))
+    (check-equal? (map values xs) xs))
 
   (property-name prop-list-map-identity)
 
