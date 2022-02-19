@@ -18,7 +18,7 @@
      ([xs (gen:list gen:natural)])
      (let ([f (lambda (n) (* 3 (add1 n)))]
            [g (lambda (n) (/ n 2))])
-      (check-equal? (map f (map g xs)) (map (compose f g) xs))))
+      (check-equal? (map f (map g xs)) (map (compose1 f g) xs))))
 
    (define (test-property prop)
      (test-case (symbol->string (property-name prop))
