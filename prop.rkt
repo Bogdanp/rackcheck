@@ -12,7 +12,8 @@
 ;; property ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (provide
- (rename-out [prop? property?])
+ (rename-out [prop? property?]
+             [prop-name property-name])
  property
  define-property)
 

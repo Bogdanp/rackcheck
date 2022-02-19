@@ -486,6 +486,18 @@ Don't use them to produce values for your tests.
   ]
 }
 
+@defproc[(property-name [property any/c]) any/c?]{
+  Returns name of the @racket[property].
+
+  @ex[
+    (define-property prop-list-map-identity
+     ([xs (gen:list gen:natural)])
+     (check-equal? (map values xs) xs))
+
+    (property-name prop-list-map-identity)
+  ]
+}
+
 @defproc[(label! [s (or/c false/c string?)]) void?]{
   Keeps track of how many times @racket[s] appears in the current set
   of tests.  Use this to classify and keep track of what categories
