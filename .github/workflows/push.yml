@@ -14,6 +14,8 @@ jobs:
         with:
           architecture: x64
           version: ${{ matrix.racket-version }}
-      - run: raco pkg install --batch --auto --name rackcheck
-      - run: raco test .
-      - run: raco test examples/*
+      - run: raco pkg install --batch --auto ./rackcheck-lib
+      - run: raco pkg install --batch --auto ./rackcheck
+      - run: raco test rackcheck-lib
+      - run: raco test rackcheck/examples/*
+      - run: raco scribble rackcheck/rackcheck.scrbl
