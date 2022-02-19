@@ -486,7 +486,7 @@ Don't use them to produce values for your tests.
   ]
 }
 
-@defproc[(property-name [property any/c]) any/c?]{
+@defproc[(property-name [property any/c]) any/c]{
   Returns name of the @racket[property].
 
   @ex[
