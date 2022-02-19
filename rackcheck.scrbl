@@ -3,7 +3,6 @@
 @(require scribble/example
           (for-label racket/base
                      racket/contract
-                     racket/function
                      racket/stream
                      racket/string
                      rackcheck
@@ -493,7 +492,7 @@ Don't use them to produce values for your tests.
   @ex[
     (define-property prop-list-map-identity
      ([xs (gen:list gen:natural)])
-     (check-equal? (map identity xs) xs))
+     (check-equal? (map values xs) xs))
 
     (property-name prop-list-map-identity)
   ]
