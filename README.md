@@ -8,7 +8,7 @@ A property-based testing library for Racket with support for shrinking.
 
 ## Usage
 
-See the `rackcheck/examples` directory.
+See the `examples` directory.
 
 ## What about [quickcheck]?
 
