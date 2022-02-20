@@ -17,5 +17,5 @@ jobs:
       - run: raco pkg install --batch --auto ./rackcheck-lib
       - run: raco pkg install --batch --auto ./rackcheck
       - run: raco test rackcheck-lib
-      - run: raco test rackcheck/examples/*
+      - run: raco test examples/*
       - run: raco scribble rackcheck/rackcheck.scrbl
