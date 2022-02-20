@@ -10,4 +10,3 @@
                      "scribble-lib"))
 (define update-implies '("rackcheck-lib"))
 (define scribblings '(("rackcheck.scrbl")))
-(define compile-omit-paths '("examples"))
