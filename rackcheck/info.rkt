@@ -9,4 +9,4 @@
                      "rackunit-lib"
                      "scribble-lib"))
 (define implies '("rackcheck-lib"))
-(define scribblings '(("rackcheck.scrbl")))
+(define scribblings '(("rackcheck.scrbl" () ("Testing"))))
