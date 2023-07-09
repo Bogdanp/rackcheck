@@ -2,7 +2,7 @@ on: [push, pull_request]
 name: main
 jobs:
   build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         racket-version: [ '7.6', '8.0', 'current' ]
