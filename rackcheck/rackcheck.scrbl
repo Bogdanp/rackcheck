@@ -20,7 +20,7 @@
       #:label #f
       body ...))))
 
-@title{@tt{rackcheck}: property testing}
+@title{@tt{rackcheck}: Property-based Testing}
 @author[(author+email "Bogdan Popa" "bogdan@defn.io")]
 
 Rackcheck is a property-based testing library for Racket with support
