@@ -32,10 +32,31 @@
  gen:hasheqv
  gen:frequency)
 
+(define exact-round
+  (compose1 inexact->exact round))
+
 (define gen:natural
   (gen
    (lambda (rng size)
-     (define n (random 0 (add1 size) rng))
+     (define n
+       (let ([hi (add1 size)])
+         (cond
+           [(<= hi #xFFFFFF2F)
+            (random 0 hi rng)]
+           [else
+            (define hi-1 (sub1 hi))
+            (define bits (exact-round (log hi 2)))
+            (define step (exact-round (log #x7FFFFFFF 2)))
+            (define steps (quotient bits step))
+            (for/fold ([res 0] #:result (min res hi-1))
+                      ([_ (in-range (add1 steps))]
+                       #:do [(define next-res
+                               (bitwise-ior
+                                (arithmetic-shift res step)
+                                (random 0 #x7FFFFFFF rng)))])
+              #:break (> next-res hi-1)
+              #:final (= next-res hi-1)
+              next-res)])))
      (make-shrink-tree n shrink-integer))))
 
 (module+ test

@@ -237,6 +237,11 @@ Don't use them to produce values for your tests.
     (shrink (gen:integer-in 1 255) 5)
     (shrink (gen:integer-in -99 0) 5)
   ]
+
+  @history[
+    #:changed "2.1" @elem{The delta between @racket[hi] and
+      @racket[lo] may now exceed @racket[#xFFFFFF2F].}
+  ]
 }
 
 @defthing[gen:real gen?]{
