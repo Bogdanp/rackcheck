@@ -93,7 +93,6 @@
       (for/stream ([shrunk-rsts (in-stream (shrink-trees rst))])
         (cons fst shrunk-rsts)))]))
 
-
 (module+ test
   (require rackunit)
 

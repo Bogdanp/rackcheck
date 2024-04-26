@@ -3,7 +3,6 @@
 (require (for-syntax racket/base
                      syntax/parse/pre)
          racket/contract/base
-         racket/contract/region
          racket/match
          racket/random
          racket/stream
@@ -44,13 +43,13 @@
 (module+ test
   (require "gen/base.rkt")
 
-  (define prop-addition-commutes
+  (define prop-addition-commutes ;; noqa
     (property ([a gen:natural]
                [b gen:natural])
       (= (+ a b)
          (+ b a))))
 
-  (define prop-addition-is-multiplication
+  (define prop-addition-is-multiplication ;; noqa
     (property ([a gen:natural]
                [b gen:natural])
       (= (+ a b)
@@ -61,21 +60,21 @@
 
 (provide
  config?
- make-config)
+ (contract-out
+  [make-config (->* []
+                    [#:seed (integer-in 0 (sub1 (expt 2 31)))
+                     #:tests exact-positive-integer?
+                     #:size (-> exact-positive-integer? exact-nonnegative-integer?)
+                     #:deadline (>=/c 0)]
+                    config?)]))
 
 (struct config (seed tests size deadline))
 
-(define/contract (make-config #:seed [seed (make-random-seed)]
-                              #:tests [tests 100]
-                              #:size [size (lambda (n)
-                                             (expt (sub1 n) 2))]
-                              #:deadline [deadline (+ (current-inexact-milliseconds) (* 60 1000))])
-  (->* ()
-       (#:seed (integer-in 0 (sub1 (expt 2 31)))
-        #:tests exact-positive-integer?
-        #:size (-> exact-positive-integer? exact-nonnegative-integer?)
-        #:deadline (>=/c 0))
-       config?)
+(define (make-config #:seed [seed (make-random-seed)]
+                     #:tests [tests 100]
+                     #:size [size (lambda (n)
+                                    (expt (sub1 n) 2))]
+                     #:deadline [deadline (+ (current-inexact-milliseconds) (* 60 1000))])
   (config seed tests size deadline))
 
 (module+ private
@@ -87,7 +86,7 @@
 (struct result (config prop labels tests-run status args args/smallest e)
   #:transparent)
 
-(define (make-result config prop labels tests-run status [args #f] [args/smallest #f] [exception #f])
+(define (make-result config prop labels tests-run status [args #f] [args/smallest #f] [exception #f]) ;; noqa
   (result config prop labels tests-run status args args/smallest exception))
 
 (module+ private
@@ -97,19 +96,18 @@
 ;; check ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (provide
- label!)
+ (contract-out
+  [label! (-> (or/c #f string?) void?)]))
 
 (define current-labels
   (make-parameter #f))
 
-(define/contract (label! s)
-  (-> (or/c false/c string?) void?)
+(define (label! s)
   (define labels (current-labels))
   (when (and s labels)
     (hash-update! labels s add1 0)))
 
-(define/contract (check c p)
-  (-> config? prop? result?)
+(define (check c p)
   (define caller-rng (current-pseudo-random-generator))
   (define rng (make-pseudo-random-generator))
   (parameterize ([current-labels (make-hash)]
@@ -159,7 +157,9 @@
             (make-result c p (current-labels) (add1 test) 'falsified value shrunk? exn?)])]))))
 
 (module+ private
-  (provide check))
+  (provide
+   (contract-out
+    [check (-> config? prop? result?)])))
 
 (module+ test
   (require (prefix-in ru: rackunit))
