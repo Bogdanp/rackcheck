@@ -1,8 +1,9 @@
 #lang racket/base
 
 (require (for-syntax racket/base
-                     syntax/parse)
-         racket/contract
+                     syntax/parse/pre)
+         racket/contract/base
+         racket/contract/region
          racket/match
          racket/random
          racket/stream

@@ -1,6 +1,7 @@
 #lang racket/base
 
-(require racket/contract
+(require racket/contract/base
+         racket/contract/region
          racket/list
          racket/random
          racket/stream
@@ -146,8 +147,8 @@
     (check-shrinks gen:real '(0.2904158091187683))))
 
 (define/contract (gen:one-of choices [equal?-proc equal?])
-  (->* ((non-empty-listof any/c))
-       ((-> any/c any/c boolean?))
+  (->* [(non-empty-listof any/c)]
+       [(-> any/c any/c boolean?)]
        gen?)
   (gen
    (lambda (rng _size)
@@ -253,7 +254,7 @@
        ((1 |8|) ...)))))
 
 (define/contract (gen:list g #:max-length [max-len 128])
-  (->* (gen?) (#:max-length exact-nonnegative-integer?) gen?)
+  (->* [gen?] [#:max-length exact-nonnegative-integer?] gen?)
   (gen
    (lambda (rng size)
      (define len (min (random 0 (add1 size) rng) max-len))

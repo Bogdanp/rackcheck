@@ -1,13 +1,13 @@
 #lang racket/base
 
-(require racket/contract
+(require racket/contract/base
          racket/stream)
 
 (provide
  shrink-proc/c
  (contract-out
   (struct shrink-tree ([val any/c] [shrinks stream?]))
-  [make-shrink-tree (->* (any/c) (shrink-proc/c) shrink-tree?)]
+  [make-shrink-tree (->* [any/c] [shrink-proc/c] shrink-tree?)]
   [shrink-tree-map (-> shrink-tree? (-> any/c any/c) shrink-tree?)]))
 
 (module+ private

@@ -1,6 +1,7 @@
 #lang racket/base
 
-(require racket/contract
+(require racket/contract/base
+         racket/contract/region
          racket/random
          racket/stream
          (submod "shrink-tree.rkt" private))
@@ -40,7 +41,7 @@
   (gen proc))
 
 (define/contract (sample g [n 10] [rng (current-pseudo-random-generator)])
-  (->* (gen?) (exact-positive-integer? pseudo-random-generator?) (listof any/c))
+  (->* [gen?] [exact-positive-integer? pseudo-random-generator?] (listof any/c))
   (for/list ([s (in-range n)])
     (shrink-tree-val (g rng (expt s 2)))))
 
@@ -49,10 +50,10 @@
                          [rng (current-pseudo-random-generator)]
                          #:limit [limit #f]
                          #:max-depth [max-depth 1])
-  (->* (gen? exact-positive-integer?)
-       (pseudo-random-generator?
+  (->* [gen? exact-positive-integer?]
+       [pseudo-random-generator?
         #:limit (or/c #f exact-positive-integer?)
-        #:max-depth (or/c #f exact-nonnegative-integer?))
+        #:max-depth (or/c #f exact-nonnegative-integer?)]
        (listof any/c))
   (let loop ([tree (g rng size)]
              [depth 0])
@@ -107,8 +108,8 @@
          ((proc val) (make-rng) size)))))))
 
 (define/contract (gen:filter g p [max-attempts 1000])
-  (->* (gen? (-> any/c boolean?))
-       ((or/c exact-positive-integer? +inf.0))
+  (->* [gen? (-> any/c boolean?)]
+       [(or/c exact-positive-integer? +inf.0)]
        gen?)
   (gen
    (lambda (rng size)
