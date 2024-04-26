@@ -257,7 +257,7 @@
   (->* [gen?] [#:max-length exact-nonnegative-integer?] gen?)
   (gen
    (lambda (rng size)
-     (define len (random 0 (min (add1 size) max-len) rng))
+     (define len (random 0 (add1 (min size max-len)) rng))
      (define trees
        (for/list ([_ (in-range len)])
          (g rng size)))
@@ -375,7 +375,7 @@
          (5 . ,gen:char-letter)
          (0 . ,(gen:const 'not-this-one))
          (2 . ,(gen:string gen:char-letter #:max-length 8))))
-      '(0 #\j "MK" "Vcc" 7 18 #\G "FXYcZQ" 19 #\u))))
+      '(0 #\j "MK" "VccD" 7 18 #\G "FXYcZQx" 19 #\u))))
 
 
 ;; shrinking helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
