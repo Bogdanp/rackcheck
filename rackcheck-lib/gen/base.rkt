@@ -257,7 +257,7 @@
   (->* [gen?] [#:max-length exact-nonnegative-integer?] gen?)
   (gen
    (lambda (rng size)
-     (define len (min (random 0 (add1 size) rng) max-len))
+     (define len (random 0 (min (add1 size) max-len) rng))
      (define trees
        (for/list ([_ (in-range len)])
          (g rng size)))
@@ -290,7 +290,16 @@
        ((3 19 12 10 16) ...)
        ((0 19 12 10 16 12) ...)
        ((2 19 12 10 16 12) ...)
-       ...))))
+       ...)))
+
+  (tc "list with large size"
+    (check-equal?
+     (length
+      (sample
+       (gen:resize
+        (gen:list gen:natural)
+        #xFFFFFFFFFFFFFFFF)))
+     10)))
 
 (define gen:vector
   (make-keyword-procedure
@@ -366,7 +375,7 @@
          (5 . ,gen:char-letter)
          (0 . ,(gen:const 'not-this-one))
          (2 . ,(gen:string gen:char-letter #:max-length 8))))
-      '(0 #\j "MK" "VccD" 7 18 #\G "FXYcZQxB" 19 #\u))))
+      '(0 #\j "MK" "Vcc" 7 18 #\G "FXYcZQ" 19 #\u))))
 
 
 ;; shrinking helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
